@@ -1,0 +1,15 @@
+torchvision
+torch
+opencv-python
+matplotlib
+pandas
+numpy
+imutils
+Pillow
+pytesseract
+beautifulsoup4
+flask
+asyncio
+aiohttp
+psycopg2
+minio
