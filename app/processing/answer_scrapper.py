@@ -41,5 +41,5 @@ async def find_possible_answers(search_meaning, length):
 
     possible_answers = list(set(possible_answers_1 + possible_answers_2))
 
-    # print(search_meaning + " " + str(possible_answers))
+    print(search_meaning + " " + str(possible_answers))
     return possible_answers

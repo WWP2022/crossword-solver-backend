@@ -23,8 +23,8 @@ services:
       - POSTGRES_DB=crossword-solver_dev
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - PGDATA=/var/lib/postgresql/data/pgdata
       - POSTGRES_PORT=5432
+      - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
       - "crossword-solver-postgres-data:/var/lib/postgresql/data"
 

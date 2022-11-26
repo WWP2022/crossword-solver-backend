@@ -1,4 +1,4 @@
-from app.processing_image.answer_scrapper import find_possible_answers
+from app.processing.answer_scrapper import find_possible_answers
 
 
 class CrosswordNode:

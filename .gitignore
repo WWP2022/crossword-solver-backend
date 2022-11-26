@@ -133,3 +133,6 @@ dmypy.json
 tmp/
 
 *.pyc
+
+/deploy/postgres-data/
+/deploy/minio-data/
