@@ -1,0 +1,76 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build_and_push_backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@:v2
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push backend
+        id: docker_build_backend
+        run: |
+          docker build -f Dockerfile -t crossword-solver-backend .
+          docker tag crossword-solver-backend wwp2022/crossword-solver-backend:latest
+          docker push wwp2022/crossword-solver-backend:latest
+
+  build_and_push_proxy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push proxy
+        id: docker_build_proxy
+        run: |
+          docker build -f proxy/Dockerfile -t crossword-solver-proxy proxy/.
+          docker tag crossword-solver-proxy wwp2022/crossword-solver-proxy:latest
+          docker push wwp2022/crossword-solver-proxy:latest
+
+  deploy_to_theliver:
+    runs-on: ubuntu-latest
+    needs:
+      - build_and_push_backend
+      - build_and_push_proxy
+    steps:
+      - uses: actions/checkout@v2
+      - name: Copy configuration
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USERNAME }}
+          password: ${{ secrets.DEPLOY_PASSWORD }}
+          source: "deploy/*"
+          target: "services/crossword-solver"
+
+      - name: Executing remote ssh commands
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USERNAME }}
+          password: ${{ secrets.DEPLOY_PASSWORD }}
+          script: |
+            mv ~/services/crossword-solver/deploy/* ~/services/crossword-solver/
+            mv ~/services/crossword-solver/prod-docker-compose.yml ~/services/crossword-solver/docker-compose.yml
+            rm -r ~/services/crossword-solver/deploy
+            DOCKER_COMPOSE_APP_FILE=~/services/crossword-solver/docker-compose.yml
+            docker-compose -f "$DOCKER_COMPOSE_APP_FILE" pull
+            docker-compose -f "$DOCKER_COMPOSE_APP_FILE" up -d --build
+            docker image prune --all --force
