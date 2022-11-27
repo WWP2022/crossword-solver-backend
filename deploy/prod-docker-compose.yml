@@ -6,7 +6,7 @@ services:
     container_name: crossword-solver-proxy
     restart: always
     ports:
-      - "9907:80"
+      - "9007:80"
 
   crossword-solver-minio:
     image: minio/minio:latest
@@ -26,7 +26,7 @@ services:
     image: postgres:12.2
     container_name: crossword-solver-postgres
     ports:
-      - "9908:5432"
+      - "9008:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

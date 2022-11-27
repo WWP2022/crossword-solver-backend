@@ -1,6 +1,5 @@
 from flask import Flask, request, send_file
 
-from app.clients.postgres_client import esa
 from app.processing.crossword_manager import solve_crossword
 
 app = Flask(__name__)
@@ -8,7 +7,6 @@ app = Flask(__name__)
 
 @app.route("/api/hello", methods=["GET"])
 def hello():
-    esa()
     return "Hello world"
 
 

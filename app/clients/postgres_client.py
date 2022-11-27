@@ -17,7 +17,3 @@ conn = psycopg2.connect(
     password=PASSWORD)
 
 cursor = conn.cursor()
-
-
-def esa():
-    print(cursor.name)
