@@ -1,6 +1,8 @@
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, jsonify
 
 from app.processing.crossword_manager import solve_crossword
+import shortuuid
+import random
 
 app = Flask(__name__)
 
@@ -18,6 +20,29 @@ def solve():
     file_path = solve_crossword(file.stream, user_id)
 
     return send_file(file_path, mimetype='image/gif')
+
+
+@app.route("/api/register", methods=["GET"])
+def register():
+    user_id = shortuuid.uuid()
+    print(user_id)
+    # TODO save user in database
+    return jsonify({'user_id': str(user_id)})
+
+
+@app.route("/api/login")
+def login():
+    content = request.json
+    user_id = content['user_id']
+
+    print(user_id)
+
+    # TODO Check if user_id exist in database
+    user_exists = random.choice([True, False])
+    if user_exists:
+        return jsonify({'user_id': user_id})
+    else:
+        return jsonify({'error': "User with given id does not exist"})
 
 
 if __name__ == "__main__":

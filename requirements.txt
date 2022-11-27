@@ -13,3 +13,4 @@ asyncio
 aiohttp
 psycopg2
 minio
+shortuuid
