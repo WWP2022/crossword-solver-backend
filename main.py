@@ -30,7 +30,7 @@ def register():
     return jsonify({'user_id': str(user_id)})
 
 
-@app.route("/api/login")
+@app.route("/api/login", methods=["POST"])
 def login():
     content = request.json
     user_id = content['user_id']
@@ -38,7 +38,7 @@ def login():
     print(user_id)
 
     # TODO Check if user_id exist in database
-    user_exists = random.choice([True, False])
+    user_exists = len(user_id) == 22
     if user_exists:
         return jsonify({'user_id': user_id})
     else:
