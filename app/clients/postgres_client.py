@@ -1,19 +1,15 @@
-import os
-import psycopg2
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 
 from app.utils.docker_logs import get_logger
+from app.utils.variables import Variables
 
 logger = get_logger('postgres_client')
-
-HOST = os.environ.get("POSTGRES_HOST", "localhost")
-DATABASE = os.environ.get("POSTGRES_DB", "crossword-solver_dev")
-USER = os.environ.get("POSTGRES_USER", "postgres")
-PASSWORD = os.environ.get("POSTGRES_PASSWORD", "postgres")
-
-conn = psycopg2.connect(
-    host=HOST,
-    database=DATABASE,
-    user=USER,
-    password=PASSWORD)
-
-cursor = conn.cursor()
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://' + Variables.USER \
+                                        + ':' + Variables.PASSWORD \
+                                        + '@' + Variables.POSTGRES_HOST \
+                                        + ":" + Variables.DATABASE_PORT \
+                                        + '/' + Variables.DATABASE
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
