@@ -13,5 +13,4 @@ asyncio
 aiohttp
 minio
 shortuuid
-db
 flask-sqlalchemy

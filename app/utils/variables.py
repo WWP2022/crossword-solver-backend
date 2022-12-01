@@ -2,17 +2,16 @@ import os
 
 
 class Variables:
+    POSTGRES_USER = os.environ.get("POSTGRES_USER", "postgres")
+    POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD", "postgres")
     POSTGRES_HOST = os.environ.get("POSTGRES_HOST", "localhost")
-    DATABASE = os.environ.get("POSTGRES_DB", "crossword-solver_dev")
-    DATABASE_PORT = os.environ.get("POSTGRES_PORT", "5432")
-    USER = os.environ.get("POSTGRES_USER", "postgres")
-    PASSWORD = os.environ.get("POSTGRES_PASSWORD", "postgres")
+    POSTGRES_PORT = os.environ.get("POSTGRES_PORT", "5432")
+    POSTGRES_DB_NAME = os.environ.get("POSTGRES_DB", "crossword-solver_dev")
 
     MINIO_HOST = os.environ.get("MINIO_HOST", "localhost")
     MINIO_PORT = os.environ.get("MINIO_PORT", "9000")
+    MINIO_ACCESS_KEY = os.environ.get("MINIO_ROOT_USER", "admin")
+    MINIO_SECRET_KEY = os.environ.get("MINIO_ROOT_PASSWORD", "admin123")
+    MINIO_SECURE = False
 
-    ACCESS_KEY = os.environ.get("MINIO_ROOT_USER", "admin")
-    SECRET_KEY = os.environ.get("MINIO_ROOT_PASSWORD", "admin123")
-    SECURE = False
-
-    BUCKET_NAME = "processed-images"
+    MINIO_BUCKET_NAME = "processed-images"

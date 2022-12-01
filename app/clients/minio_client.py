@@ -7,17 +7,17 @@ logger = get_logger('minio_client')
 
 minio_client = Minio(
     Variables.MINIO_HOST + ":" + Variables.MINIO_PORT,
-    access_key=Variables.ACCESS_KEY,
-    secret_key=Variables.SECRET_KEY,
-    secure=Variables.SECURE
+    access_key=Variables.MINIO_ACCESS_KEY,
+    secret_key=Variables.MINIO_SECRET_KEY,
+    secure=Variables.MINIO_SECURE
 )
 
-if not minio_client.bucket_exists(Variables.BUCKET_NAME):
-    minio_client.make_bucket(Variables.BUCKET_NAME)
+if not minio_client.bucket_exists(Variables.MINIO_BUCKET_NAME):
+    minio_client.make_bucket(Variables.MINIO_BUCKET_NAME)
 
 
 def put_processed_image(user_id, file):
     file_name = file.rsplit('/', 1)[-1]  # get only crossword_name
     path = user_id + "/" + file_name
-    minio_client.fput_object(Variables.BUCKET_NAME, path, file)
+    minio_client.fput_object(Variables.MINIO_BUCKET_NAME, path, file)
     logger.info(f'save processed image for client: {user_id}')

@@ -50,7 +50,7 @@ def login():
 @app.route("/api/crossword-clue", methods=["GET"])
 def get_all_crossword_clues():
     crossword_clues = db.session.query(CrosswordClue).all()
-    return json.dumps([crossword_clue.serialize for crossword_clue in crossword_clues])
+    return [crossword_clue.serialize for crossword_clue in crossword_clues]
 
 
 @app.route("/api/crossword-clue", methods=["PUT"])
@@ -60,7 +60,7 @@ def add_crossword_clue():
         user_id = content['user_id']
         # TODO check if user_id exist in database
 
-        answers = content['answer']
+        answers = json.dumps(content['answers'])
         if len(answers) == 0:
             return "Answers for question cannot be empty", 400
 

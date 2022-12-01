@@ -6,10 +6,10 @@ from app.utils.variables import Variables
 
 logger = get_logger('postgres_client')
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://' + Variables.USER \
-                                        + ':' + Variables.PASSWORD \
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://' + Variables.POSTGRES_USER \
+                                        + ':' + Variables.POSTGRES_PASSWORD \
                                         + '@' + Variables.POSTGRES_HOST \
-                                        + ":" + Variables.DATABASE_PORT \
-                                        + '/' + Variables.DATABASE
+                                        + ":" + Variables.POSTGRES_PORT \
+                                        + '/' + Variables.POSTGRES_DB_NAME
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
