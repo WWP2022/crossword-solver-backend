@@ -128,11 +128,11 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-
-
 tmp/
 
 *.pyc
 
 /deploy/postgres-data/
 /deploy/minio-data/
+
+.idea/

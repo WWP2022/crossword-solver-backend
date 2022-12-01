@@ -11,6 +11,6 @@ beautifulsoup4
 flask
 asyncio
 aiohttp
-psycopg2
 minio
 shortuuid
+flask-sqlalchemy
