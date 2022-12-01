@@ -1,12 +1,12 @@
 import json
 
-import shortuuid
 from flask import request, jsonify
 from flask import send_file
 
 from app.clients.postgres_client import app, db
-from app.model.crossword_clue import CrosswordClue
+from app.model.database.crossword_clue import CrosswordClue
 from app.processing.crossword_manager import solve_crossword
+from app.service.user_service import register_new_user, get_user_by_user_id
 
 
 @app.route("/api/health", methods=["GET"])
@@ -24,12 +24,10 @@ def solve():
     return send_file(file_path, mimetype='image/gif')
 
 
-@app.route("/api/register", methods=["GET"])
+@app.route("/api/register", methods=["POST"])
 def register():
-    user_id = shortuuid.uuid()
-    print(user_id)
-    # TODO save user in database
-    return jsonify({'user_id': str(user_id)})
+    user = register_new_user()
+    return user.serialize, 201
 
 
 @app.route("/api/login", methods=["POST"])
@@ -37,14 +35,11 @@ def login():
     content = request.json
     user_id = content['user_id']
 
-    print(user_id)
+    user = get_user_by_user_id(user_id)
+    if user is None:
+        return jsonify({'error': "User with given id does not exist"}), 401
 
-    # TODO check if user_id exist in database
-    user_exists = len(user_id) == 22
-    if user_exists:
-        return jsonify({'user_id': user_id})
-    else:
-        return jsonify({'error': "User with given id does not exist"})
+    return user.serialize, 200
 
 
 @app.route("/api/crossword-clue", methods=["GET"])
@@ -58,7 +53,10 @@ def add_crossword_clue():
     try:
         content = request.json
         user_id = content['user_id']
-        # TODO check if user_id exist in database
+
+        user = get_user_by_user_id(user_id)
+        if user is None:
+            return jsonify({'error': "User with given id does not exist"}), 401
 
         answers = json.dumps(content['answers'])
         if len(answers) == 0:
