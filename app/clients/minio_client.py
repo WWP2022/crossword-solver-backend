@@ -1,5 +1,6 @@
 from minio import Minio
 
+from app.model.database.crossword_info import CrosswordInfo
 from app.utils.docker_logs import get_logger
 from app.utils.variables import Variables
 
@@ -16,8 +17,21 @@ if not minio_client.bucket_exists(Variables.MINIO_BUCKET_NAME):
     minio_client.make_bucket(Variables.MINIO_BUCKET_NAME)
 
 
-def put_processed_image(user_id, file):
-    file_name = file.rsplit('/', 1)[-1]  # get only crossword_name
-    path = user_id + "/" + file_name
-    minio_client.fput_object(Variables.MINIO_BUCKET_NAME, path, file)
-    logger.info(f'save processed image for client: {user_id}')
+def put_processed_image(local_path: str, user_id: str, crossword_id: int):
+    crossword_minio_path = user_id + "/" + str(crossword_id) + ".jpg"
+    minio_client.fput_object(Variables.MINIO_BUCKET_NAME, crossword_minio_path, local_path)
+    logger.info(f'Saved processed image: {crossword_id} for client: {user_id}')
+    return crossword_minio_path
+
+
+def get_processed_image(user_id: str, crossword_id: int):
+    local_path = f'/tmp/{user_id}/{crossword_id}/processed_image.jpg'
+    object_name = f'{user_id}/{crossword_id}.jpg'
+    minio_client.fget_object(Variables.MINIO_BUCKET_NAME, object_name, local_path)
+    logger.info(f'Got processed image: {crossword_id} for client: {user_id}')
+    return local_path
+
+
+def delete_processed_image(crossword_info: CrosswordInfo):
+    minio_client.remove_object(Variables.MINIO_BUCKET_NAME, crossword_info.minio_path)
+    logger.info(f'Deleted processed image: {crossword_info.id} for client: {crossword_info.user_id}')
