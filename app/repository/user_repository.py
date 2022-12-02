@@ -2,9 +2,10 @@ from app.clients.postgres_client import db
 from app.model.database.user import User
 
 
-def add_new_user(user: User):
+def save_user(user: User):
     db.session.add(user)
     db.session.commit()
+    return user
 
 
 def find_user_by_id(user_id: str):
