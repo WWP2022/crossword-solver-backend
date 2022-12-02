@@ -1,7 +1,7 @@
 import shortuuid
 
 from app.model.database.user import User
-from app.repository.user_repository import find_user_by_id, add_new_user
+import app.repository.user_repository as rep
 
 
 def register_new_user():
@@ -10,10 +10,8 @@ def register_new_user():
         user_id = shortuuid.uuid()
 
     user = User(user_id=user_id)
-    add_new_user(user)
-
-    return user
+    return rep.save_user(user)
 
 
 def get_user_by_user_id(user_id):
-    return find_user_by_id(user_id)
+    return rep.find_user_by_id(user_id)
