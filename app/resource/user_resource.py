@@ -1,24 +1,7 @@
 from flask import request, jsonify
-from flask import send_file
 
-from app.clients.postgres_client import app
-from app.processing.crossword_manager import solve_crossword
 import app.service.user_service as user_service
-
-
-@app.route('/api/health', methods=['GET'])
-def hello():
-    return 'Hello world'
-
-
-@app.route('/api/solve', methods=['POST'])
-def solve():
-    file = request.files['image']
-    user_id = 'USER_ID'
-
-    file_path = solve_crossword(file.stream, user_id)
-
-    return send_file(file_path, mimetype='image/gif')
+from app.clients.postgres_client import app
 
 
 @app.route('/api/register', methods=['POST'])

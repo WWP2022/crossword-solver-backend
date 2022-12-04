@@ -1,10 +1,8 @@
-import json
-
 from flask import request, jsonify
 
+import app.service.crossword_clue_service as crossword_clue_service
 from app.clients.postgres_client import app
 from app.repository.crossword_clue_repository import find_crossword_clues_by_user_id
-import app.service.crossword_clue_service as crossword_clue_service
 from app.service.user_service import get_user_by_user_id
 
 
@@ -51,7 +49,7 @@ def add_crossword_clue():
         if user is None:
             return jsonify({'error': 'User with given id does not exist'}), 401
 
-        answers = json.dumps(content['answers'])
+        answers = content['answer']
         if len(answers) == 0:
             return jsonify({'error': 'Answers for question cannot be empty'}), 400
 
@@ -66,4 +64,4 @@ def add_crossword_clue():
 
         return crossword_clue.serialize, 201
     except Exception as e:
-        return str(e)
+        return jsonify({'error': f'Some error occurred: {e}. Check your json.'}), 400

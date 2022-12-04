@@ -1,26 +1,24 @@
-import cv2
-import pandas as pd
-import numpy as np
 import os
-import shutil
+from pathlib import Path
 from time import time
+from warnings import filterwarnings
 
+import cv2
+import numpy as np
+import pandas as pd
+import pytesseract
 import torch
 import torchvision.transforms as transforms
 from torch.autograd import Variable
 
+from app.hardcoded import hardcoded_crossword
+from app.model.crossword_node import CrosswordNode
 from app.model.ml.pytorchModel import Net
-
-import pytesseract
-
-import codecs
-import json
-
-from warnings import filterwarnings
 
 filterwarnings('ignore')
 
 CAT_MAPPING = {0: 'both', 1: 'double_text', 2: 'down', 3: 'inverse_arrow', 4: 'other', 5: 'right', 6: 'single_text'}
+
 
 def calcCoordinates(line):
     rho, theta = line.reshape(-1)
@@ -205,13 +203,10 @@ def correctLines(lines):
     return lines + newLines
 
 
-def createCrops(intersections, image, path='tmp/'):
+def createCrops(intersections, image, base_image_path):
     # cut each cell separately and place it into the tmp folder
-
-    shutil.rmtree(path, ignore_errors=True)
-
     try:
-        os.mkdir(path)
+        os.mkdir(base_image_path)
     except:
         pass
 
@@ -220,7 +215,7 @@ def createCrops(intersections, image, path='tmp/'):
     for i, x in enumerate(xs[:-1]):
         for j, y in enumerate(ys[:-1]):
             cropImage = image[y:ys[j + 1], x:xs[i + 1]]
-            cv2.imwrite(path + f'{j}_{i}.png', cropImage)
+            cv2.imwrite(base_image_path + f'{j}_{i}.png', cropImage)
 
 
 def ocr_core(filename):
@@ -291,39 +286,34 @@ def find_length(data, arrow):
         return counter
 
 
-def extractJson(data, IMG_PATH):
+def extract_crossword_to_model(data, base_image_path):
     crossword_nodes = []
-    json = {'definitions': []}
     for i in range(data.shape[0]):
         for j in range(data.shape[1]):
+            # TODO after training model, we need to improve all functions called below
             if data.iloc[i, j] == 'single_text' or data.iloc[i, j] == 'double_text':
                 arrows = findArrows(data, i, j)
-                text = ocr_core(IMG_PATH + f'{i}_{j}.png')
+                text = ocr_core(base_image_path + f'{i}_{j}.png')
                 for index, arrow in enumerate(arrows):
                     length = find_length(data, arrow)
-                    # crossword_nodes.append(
-                    #     CrosswordNode(
-                    #         definition=str(text),
-                    #         position=[i, j],
-                    #         direction=arrow[0],
-                    #         start_position=[arrow[1], arrow[2]],
-                    #         length=length
-                    #     )
-                    # )
-                    json['definitions'].append({
-                        'label': str(text),
-                        'position': [i, j],
-                        'solution': {
-                            'startPosition': [arrow[1], arrow[2]],
-                            'direction': arrow[0],
-                            'length': length
-                        }
-                    })
-    return json
+                    crossword_nodes.append(
+                        CrosswordNode(
+                            definition=str(text),
+                            position_of_definition=[i, j],
+                            direction=arrow[0],
+                            solution_start_position=[arrow[1], arrow[2]],
+                            length=length
+                        )
+                    )
+    # TODO create and return proper Crossword object
+    crossword = hardcoded_crossword
+    return crossword
 
 
-def Im2Json(MODEL_PATH='app/model/ml/model.pt', IMG_PATH='tmp/', IMG_SHAPE=(64, 64), CAT_MAPPING={}):
-    MATRIX_SIZE = sorted(list(map(lambda x: list(map(int, x.split('.')[0].split('_'))), os.listdir(IMG_PATH))))[-1]
+def Im2Json(base_image_path, IMG_SHAPE=(64, 64), CAT_MAPPING={}):
+    MODEL_PATH = str(Path(os.path.realpath(__file__)).parent) + "/model.pt"
+    MATRIX_SIZE = sorted(list(map(lambda x: list(map(int, x.split('.')[0].split('_'))),
+                                  [f for f in os.listdir(base_image_path) if "_" in f])))[-1]
     N_CLASSES = len(CAT_MAPPING)
     propertyMatrix = np.zeros((MATRIX_SIZE[0] + 1, MATRIX_SIZE[1] + 1))
     textualPropertyMatrix = pd.DataFrame(np.zeros((MATRIX_SIZE[0] + 1, MATRIX_SIZE[1] + 1)))
@@ -340,8 +330,8 @@ def Im2Json(MODEL_PATH='app/model/ml/model.pt', IMG_PATH='tmp/', IMG_SHAPE=(64, 
             transforms.Normalize(mean=(0.5,), std=(0.5,))
         ])
 
-    for im in os.listdir(IMG_PATH):
-        img_path = IMG_PATH + im
+    for im in [f for f in os.listdir(base_image_path) if "_" in f]:
+        img_path = base_image_path + im
         image = cv2.imread(img_path)
 
         idxs = list(map(int, im.split('.')[0].split('_')))
@@ -352,21 +342,16 @@ def Im2Json(MODEL_PATH='app/model/ml/model.pt', IMG_PATH='tmp/', IMG_SHAPE=(64, 
         propertyMatrix[idxs[0], idxs[1]] = np.argmax(pred)
         textualPropertyMatrix.iloc[idxs[0], idxs[1]] = CAT_MAPPING[np.argmax(pred)]
 
-    jsonData = extractJson(textualPropertyMatrix, IMG_PATH)
-    return jsonData
+    return extract_crossword_to_model(textualPropertyMatrix, base_image_path)
 
 
-def extract_crossword(path):
+def extract_crossword(unprocessed_image_path, base_image_path):
     t1 = time()
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--path", help="Path to the crossword file")
-    # args = parser.parse_args()
-    # path = args.path
 
-    image = cv2.imread(path)
+    image = cv2.imread(unprocessed_image_path)
 
     # find crossword lines
-    print('Extracting grid from the crossword...\n\n')
+    print('Extracting grid from the crossword...\n')
     lines, (image, mask) = getLines(image, filter=True)
 
     # corrects some missing lines
@@ -375,19 +360,14 @@ def extract_crossword(path):
     # find line intersection points
     intersections = segmented_intersections(lines)
 
-    print('Creating crop for each crossword cell...\n\n')
+    print('Creating crop for each crossword cell...\n')
     # crop each cell to a separate file
-    createCrops(intersections, image)
+    createCrops(intersections, image, base_image_path)
 
-    print('Extracting JSON from the crossword...\n\n')
+    print('Extracting JSON from the crossword...\n')
     # extract json from a given image
-    jsonData = Im2Json(CAT_MAPPING=CAT_MAPPING)
+    crossword = Im2Json(base_image_path, CAT_MAPPING=CAT_MAPPING)
 
-    fileName = f'''tmp/{path.split('/')[-1].split('.')[0]}.json'''
-    with codecs.open(fileName, 'w', encoding='utf_8_sig') as f:
-        json.dump(jsonData, f, ensure_ascii=False)
+    print(f'Crossword solve in {time() - t1} seconds!')
 
-    print(f'JSON file saved as {fileName} in {time() - t1} seconds!')
-
-    # import sys
-    # sys.exit()
+    return crossword

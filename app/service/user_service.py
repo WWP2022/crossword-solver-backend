@@ -1,7 +1,7 @@
 import shortuuid
 
-from app.model.database.user import User
 import app.repository.user_repository as rep
+from app.model.database.user import User
 
 
 def register_new_user():
