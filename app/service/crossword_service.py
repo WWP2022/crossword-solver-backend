@@ -44,30 +44,37 @@ def add_crossword_task(file_stream, user_id: str, crossword_name: str, timestamp
     return crossword_task_repository.save_crossword_task(crossword_task)
 
 
-def get_crossword_info_by_crossword_name_and_user_id(user_id: str, crossword_name: str):
-    return crossword_repository.find_crosswords_info_by_crossword_name_and_user_id(crossword_name, user_id)
+def get_crossword_info_by_crossword_id(crossword_id: int):
+    return crossword_repository.find_crossword_info_by_crossword_id(crossword_id)
 
 
-def get_crossword_processed_image(user_id: str, crossword_name: str):
-    crossword_info = crossword_repository.find_crosswords_info_by_crossword_name_and_user_id(crossword_name, user_id)
+def get_crossword_processed_image(user_id: str, crossword_id: int):
+    crossword_info = crossword_repository.find_crossword_info_by_crossword_id(crossword_id)
     if crossword_info is None:
         return None
     return minio_client.get_processed_image(user_id, crossword_info.id)
 
 
-def get_crossword_processed_images_names_and_timestamps_by_user_id(user_id: str):
+def get_crossword_processed_images_ids_names_and_timestamps_by_user_id(user_id: str):
     crossword_info = crossword_repository.find_crosswords_info_by_user_id(user_id)
-    return [{"crossword_name": info.crossword_name, "timestamp": info.timestamp} for info in crossword_info]
+    return [{"crossword_id": info.id,
+             "crossword_name": info.crossword_name,
+             "timestamp": info.timestamp} for info in crossword_info]
 
 
-def update_crossword(crossword_info: CrosswordInfo, new_crossword_name, is_accepted):
+def update_crossword(crossword_info: CrosswordInfo, crossword_name, is_accepted = True):
     if is_accepted:
         crossword_clue_service.add_questions_and_answers_from_crossword(crossword_info)
         return crossword_repository.update_crossword(
             crossword_info,
-            new_crossword_name,
+            crossword_name,
             CrosswordStatus.SOLVED_ACCEPTED.value
         )
+    minio_client.delete_processed_image(crossword_info)
+    return crossword_repository.delete_crossword_info(crossword_info)
+
+
+def delete_crossword(crossword_info: CrosswordInfo):
     minio_client.delete_processed_image(crossword_info)
     return crossword_repository.delete_crossword_info(crossword_info)
 
@@ -115,3 +122,13 @@ def solve_crossword_if_exist():
 
     # Remove task from db
     crossword_task_repository.delete_crossword_task(crossword_task)
+
+def is_crossword_name_exist(user_id, crossword_name):
+    return crossword_repository.find_crossword_info_by_crossword_name_and_user_id(crossword_name, user_id) is not None
+
+def get_default_name(user_id: str):
+    crossword_info = crossword_repository.find_last_default_name_by_user_id(user_id)
+    if crossword_info is None:
+        return "Krzyżówka-1"
+    new_default_crossword_number = int(crossword_info.crossword_name.split('-')[1]) + 1
+    return "Krzyżówka-" + str(new_default_crossword_number)

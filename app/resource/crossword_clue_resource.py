@@ -1,5 +1,3 @@
-import json
-
 from flask import request, jsonify
 
 import app.service.crossword_clue_service as crossword_clue_service
@@ -51,7 +49,7 @@ def add_crossword_clue():
         if user is None:
             return jsonify({'error': 'User with given id does not exist'}), 401
 
-        answers = json.dumps(content['answers'])
+        answers = content['answer']
         if len(answers) == 0:
             return jsonify({'error': 'Answers for question cannot be empty'}), 400
 

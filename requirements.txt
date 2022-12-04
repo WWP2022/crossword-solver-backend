@@ -15,3 +15,4 @@ psycopg2
 minio
 shortuuid
 flask-sqlalchemy
+sqlalchemy

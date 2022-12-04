@@ -12,7 +12,8 @@ app.add_url_rule('/api/crossword-clue', view_func=crossword_clue_resource.add_cr
 app.add_url_rule('/api/crossword/status', view_func=crossword_resource.status)
 app.add_url_rule('/api/crossword', view_func=crossword_resource.get_solved_crossword)
 app.add_url_rule('/api/crossword', view_func=crossword_resource.update_crossword)
-app.add_url_rule('/api/crossword/all', view_func=crossword_resource.get_solved_crossword_names_and_timestamps)
+app.add_url_rule('/api/crossword', view_func=crossword_resource.delete_crossword)
+app.add_url_rule('/api/crossword/all', view_func=crossword_resource.get_solved_crossword_ids_names_and_timestamps)
 
 app.add_url_rule('/api/health', view_func=health_resource.hello)
 

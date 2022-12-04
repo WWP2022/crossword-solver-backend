@@ -34,6 +34,7 @@ def update_crossword_clue(crossword_clue: CrosswordClue, answers: str):
 def add_answer_to_crossword_clue(crossword_clue, answer):
     answers = json.loads(crossword_clue.answers)
     answers += [answer]
+    answers = list(set(answers))
     crossword_clue.answers = json.dumps(answers)
     db.session.commit()
     return crossword_clue
