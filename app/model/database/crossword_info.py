@@ -11,6 +11,11 @@ class CrosswordStatus(Enum):
     SOLVED_ACCEPTED = 'solved_accepted'
 
 
+class CrosswordSolvingMessage(Enum):
+    SOLVED_SUCCESSFUL = 'solved_successfully'
+    SOLVING_ERROR_NO_LINES = 'lines_not_found'
+
+
 class CrosswordInfo(db.Model):
     __tablename__ = "crossword_info"
 
@@ -20,6 +25,7 @@ class CrosswordInfo(db.Model):
     status = db.Column(db.String, nullable=False, default=CrosswordStatus.NEW.value)
     minio_path = db.Column(db.String, unique=True)
     questions_and_answers = db.Column(db.JSON)
+    solving_message = db.Column(db.String)
     timestamp = db.Column(db.String, nullable=False)
 
     def __init__(self, user_id, crossword_name, timestamp):
@@ -36,6 +42,7 @@ class CrosswordInfo(db.Model):
             'status': self.status,
             'minio_path': self.minio_path,
             'questions_and_answers': self.questions_and_answers,
+            'solving_message': self.solving_message,
             'timestamp': self.timestamp
         }
 

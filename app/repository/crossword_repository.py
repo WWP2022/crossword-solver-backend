@@ -10,14 +10,16 @@ def save_crossword_info(crossword_info: CrosswordInfo):
     return crossword_info
 
 
-def update_crossword_info_status_and_minio_path(
+def update_crossword_after_processing(
         crossword_info: CrosswordInfo,
         status: str,
         minio_path: str,
-        questions_and_answers: str):
+        questions_and_answers: str,
+        solving_message: str):
     crossword_info.status = status
     crossword_info.minio_path = minio_path
     crossword_info.questions_and_answers = questions_and_answers
+    crossword_info.solving_message = solving_message
     db.session.commit()
     return crossword_info
 
