@@ -25,7 +25,7 @@ def status():
     if crossword_info is None:
         return jsonify({'error': 'Crossword does not exist'}), 400
 
-    return jsonify({'status': crossword_info.status}), 200
+    return jsonify({'status': crossword_info.status, 'message': crossword_info.solving_message}), 200
 
 
 @app.route('/api/crossword', methods=['PATCH'])

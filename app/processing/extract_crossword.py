@@ -13,14 +13,20 @@ from torch.autograd import Variable
 
 from app.hardcoded import hardcoded_crossword
 from app.model.crossword_node import CrosswordNode
+from app.model.database.crossword_info import CrosswordSolvingMessage
 from app.model.ml.pytorchModel import Net
+from app.utils.docker_logs import get_logger
+
+logger = get_logger('extract_crossword')
 
 filterwarnings('ignore')
 
 CAT_MAPPING = {0: 'both', 1: 'double_text', 2: 'down', 3: 'inverse_arrow', 4: 'other', 5: 'right', 6: 'single_text'}
 
+SOLVING_ERROR = None
 
-def calcCoordinates(line):
+
+def calc_coordinates(line):
     rho, theta = line.reshape(-1)
     a = np.cos(theta)
     b = np.sin(theta)
@@ -34,14 +40,14 @@ def calcCoordinates(line):
     return x1, y1, x2, y2
 
 
-def calcTangent(x1, y1, x2, y2):
+def calc_tangent(x1, y1, x2, y2):
     if (y2 - y1) != 0:
         return abs((x2 - x1) / (y2 - y1))
     else:
         return 1000
 
 
-def getLines(image, filter=True):
+def get_lines(image, filter=True):
     '''
     The method finds each sudoku cell with Lines
     '''
@@ -57,16 +63,15 @@ def getLines(image, filter=True):
     # find lines on the preprocessed image u|sing Hough Transform
     lines = cv2.HoughLines(edges, 1, np.pi / 180, 150)
 
-    if not lines.any():
-        print('No lines were found')
-        exit()
+    if lines is None:
+        return None
 
     # calculate how many horizontal lines were found
     tot = 0
     for line in lines:
-        x1, y1, x2, y2 = calcCoordinates(line)
+        x1, y1, x2, y2 = calc_coordinates(line)
 
-        tan = calcTangent(x1, y1, x2, y2)
+        tan = calc_tangent(x1, y1, x2, y2)
         if tan > 1000:
             tot += 1
 
@@ -128,8 +133,8 @@ def getLines(image, filter=True):
     mask = np.zeros_like(image)
     final_lines = []
     for line in filtered_lines:
-        x1, y1, x2, y2 = calcCoordinates(line)
-        tan = calcTangent(x1, y1, x2, y2)
+        x1, y1, x2, y2 = calc_coordinates(line)
+        tan = calc_tangent(x1, y1, x2, y2)
         if tan > 1000 or tan == 0:
             cv2.line(image, (x1, y1), (x2, y2), (0, 0, 255), 2)
             cv2.line(mask, (x1, y1), (x2, y2), (0, 0, 255), 2)
@@ -139,7 +144,7 @@ def getLines(image, filter=True):
     # cv2.imwrite('hough.jpg', image)
     # cv2.imwrite('mask.jpg', mask)
 
-    return final_lines, (image, mask)
+    return final_lines
 
 
 def intersection(line1, line2):
@@ -168,11 +173,11 @@ def segmented_intersections(lines):
         for next_group in lines[i + 1:]:
             for line1 in group:
                 for line2 in next_group:
-                    x11, y11, x21, y21 = calcCoordinates(line1)
-                    x12, y12, x22, y22 = calcCoordinates(line2)
+                    x11, y11, x21, y21 = calc_coordinates(line1)
+                    x12, y12, x22, y22 = calc_coordinates(line2)
 
-                    tan1 = calcTangent(x11, y11, x21, y21)
-                    tan2 = calcTangent(x12, y12, x22, y22)
+                    tan1 = calc_tangent(x11, y11, x21, y21)
+                    tan2 = calc_tangent(x12, y12, x22, y22)
 
                     if abs(tan1 - tan2) > 0.5:
                         intersections.append(intersection(line1, line2))
@@ -180,7 +185,7 @@ def segmented_intersections(lines):
     return intersections
 
 
-def correctLines(lines):
+def correct_lines(lines):
     '''
     Adds some lines in case missing from standard methods
     '''
@@ -203,7 +208,7 @@ def correctLines(lines):
     return lines + newLines
 
 
-def createCrops(intersections, image, base_image_path):
+def create_crops(intersections, image, base_image_path):
     # cut each cell separately and place it into the tmp folder
     try:
         os.mkdir(base_image_path)
@@ -231,7 +236,7 @@ def ocr_core(filename):
     return text
 
 
-def findArrows(data, i, j):
+def find_arrows(data, i, j):
     '''
     Finds arrows adjacent to the current text displacement
     '''
@@ -292,7 +297,7 @@ def extract_crossword_to_model(data, base_image_path):
         for j in range(data.shape[1]):
             # TODO after training model, we need to improve all functions called below
             if data.iloc[i, j] == 'single_text' or data.iloc[i, j] == 'double_text':
-                arrows = findArrows(data, i, j)
+                arrows = find_arrows(data, i, j)
                 text = ocr_core(base_image_path + f'{i}_{j}.png')
                 for index, arrow in enumerate(arrows):
                     length = find_length(data, arrow)
@@ -310,7 +315,7 @@ def extract_crossword_to_model(data, base_image_path):
     return crossword
 
 
-def Im2Json(base_image_path, IMG_SHAPE=(64, 64), CAT_MAPPING={}):
+def image_to_json(base_image_path, IMG_SHAPE=(64, 64), CAT_MAPPING={}):
     MODEL_PATH = str(Path(os.path.realpath(__file__)).parent) + "/model.pt"
     MATRIX_SIZE = sorted(list(map(lambda x: list(map(int, x.split('.')[0].split('_'))),
                                   [f for f in os.listdir(base_image_path) if "_" in f])))[-1]
@@ -351,23 +356,27 @@ def extract_crossword(unprocessed_image_path, base_image_path):
     image = cv2.imread(unprocessed_image_path)
 
     # find crossword lines
-    print('Extracting grid from the crossword...\n')
-    lines, (image, mask) = getLines(image, filter=True)
+    # print('Extracting grid from the crossword...\n')
+    lines = get_lines(image, filter=True)
+
+    if lines is None:
+        logger.info(f'Error during processing: {CrosswordSolvingMessage.SOLVING_ERROR_NO_LINES.value}')
+        return None, CrosswordSolvingMessage.SOLVING_ERROR_NO_LINES
 
     # corrects some missing lines
-    lines = correctLines(lines)
+    lines = correct_lines(lines)
 
     # find line intersection points
     intersections = segmented_intersections(lines)
 
-    print('Creating crop for each crossword cell...\n')
+    # print('Creating crop for each crossword cell...\n')
     # crop each cell to a separate file
-    createCrops(intersections, image, base_image_path)
+    create_crops(intersections, image, base_image_path)
 
-    print('Extracting JSON from the crossword...\n')
+    # print('Extracting JSON from the crossword...\n')
     # extract json from a given image
-    crossword = Im2Json(base_image_path, CAT_MAPPING=CAT_MAPPING)
+    crossword = image_to_json(base_image_path, CAT_MAPPING=CAT_MAPPING)
 
-    print(f'Crossword solve in {time() - t1} seconds!')
+    logger.info(f'Crossword successfully solved in {time() - t1} seconds')
 
-    return crossword
+    return crossword, CrosswordSolvingMessage.SOLVED_SUCCESSFUL

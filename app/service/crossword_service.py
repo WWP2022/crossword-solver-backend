@@ -7,7 +7,7 @@ from PIL import Image
 import app.clients.minio_client as minio_client
 import app.repository.crossword_repository as crossword_repository
 import app.repository.crossword_task_repository as crossword_task_repository
-from app.model.database.crossword_info import CrosswordInfo, CrosswordStatus
+from app.model.database.crossword_info import CrosswordInfo, CrosswordStatus, CrosswordSolvingMessage
 from app.model.database.crossword_task import CrosswordTask
 from app.processing.extract_crossword import extract_crossword
 from app.processing.result_image import create_result_image
@@ -62,7 +62,7 @@ def get_crossword_processed_images_ids_names_and_timestamps_by_user_id(user_id: 
              "timestamp": info.timestamp} for info in crossword_info]
 
 
-def update_crossword(crossword_info: CrosswordInfo, crossword_name, is_accepted = True):
+def update_crossword(crossword_info: CrosswordInfo, crossword_name, is_accepted=True):
     if is_accepted:
         crossword_clue_service.add_questions_and_answers_from_crossword(crossword_info)
         return crossword_repository.update_crossword(
@@ -96,9 +96,26 @@ def solve_crossword_if_exist():
     unprocessed_image_path = crossword_task.unprocessed_image_path
 
     # Extract crossword from image, now we use hardcoded_crossword because ocr is not working
-    crossword = extract_crossword(unprocessed_image_path, base_image_path)
+    crossword, solving_message = extract_crossword(unprocessed_image_path, base_image_path)
 
-    # Solve, if some troubles TODO set status to CANNOT SOLVED
+    # If some troubles during processing set status to CANNOT SOLVE and set info for client
+    if solving_message is not CrosswordSolvingMessage.SOLVED_SUCCESSFUL:
+        crossword_minio_path = minio_client.put_unprocessed_image(
+            unprocessed_image_path,
+            crossword_task.user_id,
+            crossword_info.id)
+
+        crossword_repository.update_crossword_after_processing(
+            crossword_info=crossword_info,
+            status=CrosswordStatus.CANNOT_SOLVE.value,
+            minio_path=crossword_minio_path,
+            questions_and_answers=json.dumps([]),
+            solving_message=solving_message.value
+        )
+
+        clean_after_solving_crossword(base_image_path, crossword_task)
+        return
+
     crossword.solve()
 
     # Create result image and save crossword image on minio
@@ -110,21 +127,24 @@ def solve_crossword_if_exist():
 
     # Update status to SOLVED and add push image on minio service
     questions_and_answers = [{"question": node.definition, "answer": node.solution} for node in crossword.nodes]
-    crossword_repository.update_crossword_info_status_and_minio_path(
+    crossword_repository.update_crossword_after_processing(
         crossword_info,
         CrosswordStatus.SOLVED_WAITING.value,
         crossword_minio_path,
-        json.dumps(questions_and_answers)
+        json.dumps(questions_and_answers),
+        solving_message.value
     )
+    clean_after_solving_crossword(base_image_path, crossword_task)
 
-    # Clean after solving crossword
+
+def clean_after_solving_crossword(base_image_path: str, crossword_task: CrosswordTask):
     remove_unnecessary_files(base_image_path)
-
-    # Remove task from db
     crossword_task_repository.delete_crossword_task(crossword_task)
+
 
 def is_crossword_name_exist(user_id, crossword_name):
     return crossword_repository.find_crossword_info_by_crossword_name_and_user_id(crossword_name, user_id) is not None
+
 
 def get_default_name(user_id: str):
     crossword_info = crossword_repository.find_last_default_name_by_user_id(user_id)
