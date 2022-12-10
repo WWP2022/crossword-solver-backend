@@ -76,7 +76,7 @@ def get_solved_crossword():
     if image_path is None:
         return jsonify({'error': 'Crossword does not exist'}), 404
 
-    return send_file(image_path, mimetype='image/gif'),
+    return send_file(image_path, mimetype='image/gif'), 200
 
 
 @app.route('/api/crossword', methods=['DELETE'])
