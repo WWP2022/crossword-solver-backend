@@ -16,3 +16,4 @@ minio
 shortuuid
 flask-sqlalchemy
 sqlalchemy
+autocorrect

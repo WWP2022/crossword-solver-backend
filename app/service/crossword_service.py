@@ -116,7 +116,7 @@ def solve_crossword_if_exist():
         clean_after_solving_crossword(base_image_path, crossword_task)
         return
 
-    crossword.solve()
+    crossword.solve(crossword_task.user_id)
 
     # Create result image and save crossword image on minio
     processed_local_path = create_result_image(crossword, base_image_path, unprocessed_image_path)
