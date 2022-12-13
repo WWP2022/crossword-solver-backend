@@ -100,10 +100,11 @@ def solve_crossword_if_exist():
 
     # If some troubles during processing set status to CANNOT SOLVE and set info for client
     if solving_message is not CrosswordSolvingMessage.SOLVED_SUCCESSFUL:
-        crossword_minio_path = minio_client.put_unprocessed_image(
+        crossword_minio_path = minio_client.put_unprocessed_image_with_error(
             unprocessed_image_path,
             crossword_task.user_id,
-            crossword_info.id)
+            crossword_info.id,
+            solving_message.value)
 
         crossword_repository.update_crossword_after_processing(
             crossword_info=crossword_info,
@@ -117,6 +118,9 @@ def solve_crossword_if_exist():
         return
 
     crossword.solve(crossword_task.user_id)
+
+    # TODO helpful method shows solved crossword in backend logs
+    # crossword.print_result()
 
     # Create result image and save crossword image on minio
     processed_local_path = create_result_image(crossword, base_image_path, unprocessed_image_path)

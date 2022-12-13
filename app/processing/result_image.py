@@ -15,7 +15,7 @@ def draw_letter_on_image(file_name, letter):
     # portion of image width you want text width to be
     blank = Image.new('RGB', (W, H))
 
-    font_path = str(Path(os.path.realpath(__file__)).parent.parent) + "/assets/fonts/default.ttf"
+    font_path = str(Path(os.path.realpath(__file__)).parent.parent) + "/assets/fonts/FreeSans.ttf"
 
     font = ImageFont.truetype(font_path, fontsize)
 
@@ -43,7 +43,7 @@ def create_result_image(crossword, base_image_path, unprocessed_image_path):
     for i in range(crossword.row_number):
         for j in range(crossword.col_number):
             path = base_image_path + str(i) + "_" + str(j) + ".png"
-            if crossword.data[i][j] != "#":
+            if crossword.data[i][j] not in ["#", "."]:
                 draw_letter_on_image(path, crossword.data[i][j])
             image = Image.open(path)
             new_im.paste(image, (curr_x, curr_y))
