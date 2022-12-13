@@ -24,8 +24,8 @@ def put_processed_image(local_path: str, user_id: str, crossword_id: int):
     return crossword_minio_path
 
 
-def put_unprocessed_image(unprocessed_image_path: str, user_id: str, crossword_id: int):
-    crossword_minio_path = user_id + "/" + str(crossword_id) + "_unprocessed.jpg"
+def put_unprocessed_image_with_error(unprocessed_image_path: str, user_id: str, crossword_id: int, error: str):
+    crossword_minio_path = user_id + "/" + str(crossword_id) + "_" + error + "_unprocessed.jpg"
     minio_client.fput_object(Variables.MINIO_BUCKET_NAME, crossword_minio_path, unprocessed_image_path)
     logger.info(f'Saved unprocessed image with crossword_id: {crossword_id} for user_id: {user_id}')
     return crossword_minio_path

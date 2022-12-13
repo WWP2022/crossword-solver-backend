@@ -11,7 +11,7 @@ import torch
 import torchvision.transforms as transforms
 from torch.autograd import Variable
 
-from app.hardcoded import hardcoded_crossword
+from app.model.crossword import Crossword
 from app.model.crossword_node import CrosswordNode
 from app.model.database.crossword_info import CrosswordSolvingMessage
 from app.model.ml.pytorchModel import Net
@@ -21,9 +21,17 @@ logger = get_logger('extract_crossword')
 
 filterwarnings('ignore')
 
-CAT_MAPPING = {0: 'both', 1: 'double_text', 2: 'down', 3: 'inverse_arrow', 4: 'other', 5: 'right', 6: 'single_text'}
-
-SOLVING_ERROR = None
+category_mapper = {
+    0: 'down',
+    1: 'down_right',
+    2: 'empty',
+    3: 'left_down',
+    4: 'right',
+    5: 'right_and_down',
+    6: 'right_down',
+    7: 'text',
+    8: 'up_right'
+}
 
 
 def calc_coordinates(line):
@@ -33,9 +41,9 @@ def calc_coordinates(line):
     x0 = a * rho
     y0 = b * rho
     x1 = int(x0 + 100000 * (-b))
-    y1 = int(y0 + 100000 * (a))
+    y1 = int(y0 + 100000 * a)
     x2 = int(x0 - 100000 * (-b))
-    y2 = int(y0 - 100000 * (a))
+    y2 = int(y0 - 100000 * a)
 
     return x1, y1, x2, y2
 
@@ -43,26 +51,25 @@ def calc_coordinates(line):
 def calc_tangent(x1, y1, x2, y2):
     if (y2 - y1) != 0:
         return abs((x2 - x1) / (y2 - y1))
-    else:
-        return 1000
+    return 1000
 
 
 def get_lines(image, filter=True):
-    '''
-    The method finds each sudoku cell with Lines
-    '''
-
-    # apply some preprocessing before applying Hough transform
+    """
+    The method finds each crossword cell with Lines
+    """
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    edges = cv2.Canny(gray, 90, 150, apertureSize=3)
+    edges = cv2.Canny(gray, 90, 100, apertureSize=3)
     kernel = np.ones((3, 3), np.uint8)
     edges = cv2.dilate(edges, kernel, iterations=1)
     kernel = np.ones((5, 5), np.uint8)
     edges = cv2.erode(edges, kernel, iterations=1)
 
     # find lines on the preprocessed image u|sing Hough Transform
-    lines = cv2.HoughLines(edges, 1, np.pi / 180, 150)
+    lines = cv2.HoughLines(edges, 1, np.pi / 180, 275)
 
+    # This image not show all lines, we have also correct_lines
+    # cv2.imwrite('edges.jpg', edges)
     if lines is None:
         return None
 
@@ -136,7 +143,8 @@ def get_lines(image, filter=True):
         x1, y1, x2, y2 = calc_coordinates(line)
         tan = calc_tangent(x1, y1, x2, y2)
         if tan > 1000 or tan == 0:
-            cv2.line(image, (x1, y1), (x2, y2), (0, 0, 255), 2)
+            # if you want see lines on images uncomment this
+            # cv2.line(image, (x1, y1), (x2, y2), (0, 0, 255), 2)
             cv2.line(mask, (x1, y1), (x2, y2), (0, 0, 255), 2)
             final_lines.append(line)
 
@@ -186,9 +194,9 @@ def segmented_intersections(lines):
 
 
 def correct_lines(lines):
-    '''
+    """
     Adds some lines in case missing from standard methods
-    '''
+    """
 
     lineDists = pd.DataFrame(np.asarray(lines).reshape(-1, 2))
     lineDists.iloc[:, 1] = (lineDists.iloc[:, 1] > 0).apply(int)
@@ -220,7 +228,12 @@ def create_crops(intersections, image, base_image_path):
     for i, x in enumerate(xs[:-1]):
         for j, y in enumerate(ys[:-1]):
             cropImage = image[y:ys[j + 1], x:xs[i + 1]]
+            # TODO Może lepiej jest inaczej to sprawdzać jakoś, wcześniej wyłapać to?
+            if not cropImage.any():
+                return CrosswordSolvingMessage.SOLVING_ERROR_CANNOT_CROPPED_IMAGES
             cv2.imwrite(base_image_path + f'{j}_{i}.png', cropImage)
+
+    return image
 
 
 def ocr_core(filename):
@@ -229,64 +242,65 @@ def ocr_core(filename):
     """
 
     image = cv2.imread(filename)
-    # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # wszystkie wartości powyżej 120 zamieniane na 255(biały) dla lepszego kontrastu
+    image_2 = cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY)[1]
+    # TODO helpful image shows how look field before reading data
+    # cv2.imwrite(filename, image_2)
 
-    text = pytesseract.image_to_string(image, lang='pol',
-                                       config=r'--psm 1')  # We'll use Pillow's Image class to open the image and pytesseract to detect the string in the image
-    return text
+    text = pytesseract.image_to_string(image_2, lang='pol', config=r'--psm 11')
 
-
-def find_arrows(data, i, j):
-    '''
-    Finds arrows adjacent to the current text displacement
-    '''
-    arrows = []
-    try:
-        arrow1 = data.iloc[i + 1, j]
-    except:
-        arrow1 = 'other'
-
-    # if arrow is under the text fieled
-    if arrow1 != 'double_text' and arrow1 != 'single_text' and arrow1 != 'other':
-        if arrow1 == 'inverse_arrow':
-            arrow1 = 'right'
-            arrows.append([arrow1, i + 1, j])
-        elif arrow1 == 'down':
-            arrow1 = 'down'
-            arrows.append([arrow1, i + 1, j])
-
-    try:
-        arrow2 = data.iloc[i, j + 1]
-    except:
-        arrow2 = 'other'
-
-    # if arrow is to the right of the text field
-    if arrow2 != 'double_text' and arrow2 != 'single_text' and arrow2 != 'other':
-        if arrow2 == 'inverse_arrow':
-            arrow2 = 'down'
-            arrows.append([arrow2, i, j + 1])
-        elif arrow2 == 'right':
-            arrow2 = 'right'
-            arrows.append([arrow2, i, j + 1])
-
-    return arrows
+    text_with_corrections = " ".join(text.split()).replace("- ", "")
+    # TODO helpful print showing ocr on each field
+    # print("Filename: " + filename + " Ocr: " + text_with_corrections)
+    return text_with_corrections
 
 
-def find_length(data, arrow):
-    direction = arrow[0]
-    start_row = arrow[1]
-    start_col = arrow[2]
+def find_solution(data, i, j):
+    """
+    Finds direction and position of solution adjacent to the current text displacement
+    """
+    number_of_rows = data.shape[0]
+    number_of_cols = data.shape[1]
+
+    if number_of_cols > j + 1 and data.iloc[i, j + 1] == 'right':
+        return ['right', i, j + 1]
+    if number_of_rows > i + 1 and data.iloc[i + 1, j] == 'down':
+        return ['down', i + 1, j]
+    if j - 1 >= 0 and data.iloc[i, j - 1] == 'right_down':
+        return ['down', i, j - 1]
+    if number_of_cols > j + 1 and data.iloc[i, j + 1] == 'left_down':
+        return ['down', i, j + 1]
+    if i - 1 >= 0 and data.iloc[i - 1, j] == 'down_right':
+        return ['right', i - 1, j]
+    if number_of_rows > i + 1 and data.iloc[i + 1, j] == 'up_right':
+        return ['right', i + 1, j]
+    if number_of_cols > j + 1 and data.iloc[i, j + 1] == 'right_and_down':  # right
+        return ['right', i, j + 1]
+    if number_of_rows > i + 1 and data.iloc[i + 1, j] == 'right_and_down':  # down
+        return ['down', i + 1, j]
+    print(f'No arrow find for: [{i}, {j}]')
+    return None
+
+
+def find_length(data, solution):
+    direction = solution[0]
+    solution_start_row = solution[1]
+    solution_start_column = solution[2]
+
     counter = 1
+    number_of_rows = data.shape[0]
+    number_of_cols = data.shape[1]
 
     if direction == "down":
-        while (len(data) > start_row + counter) and (data.iloc[start_row + counter, start_col] not in ["single_text",
-                                                                                                       "double_text"]):
+        while (number_of_rows > solution_start_row + counter) and (
+                data.iloc[solution_start_row + counter, solution_start_column] != "text"):
             counter += 1
         return counter
 
     else:
-        while (11 > start_col + counter) and (data.iloc[start_row, start_col + counter] not in ["single_text",
-                                                                                                "double_text"]):
+        while (number_of_cols > solution_start_column + counter) and (
+                data.iloc[solution_start_row, solution_start_column + counter] != "text"):
             counter += 1
         return counter
 
@@ -295,37 +309,44 @@ def extract_crossword_to_model(data, base_image_path):
     crossword_nodes = []
     for i in range(data.shape[0]):
         for j in range(data.shape[1]):
-            # TODO after training model, we need to improve all functions called below
-            if data.iloc[i, j] == 'single_text' or data.iloc[i, j] == 'double_text':
-                arrows = find_arrows(data, i, j)
+            if data.iloc[i, j] == 'text':
+                solution = find_solution(data, i, j)
+                if solution is None:
+                    continue
                 text = ocr_core(base_image_path + f'{i}_{j}.png')
-                for index, arrow in enumerate(arrows):
-                    length = find_length(data, arrow)
-                    crossword_nodes.append(
-                        CrosswordNode(
-                            definition=str(text),
-                            position_of_definition=[i, j],
-                            direction=arrow[0],
-                            solution_start_position=[arrow[1], arrow[2]],
-                            length=length
-                        )
+                length = find_length(data, solution)
+                crossword_nodes.append(
+                    CrosswordNode(
+                        definition=str(text),
+                        position_of_definition=[i, j],
+                        direction=solution[0],
+                        solution_start_position=[solution[1], solution[2]],
+                        length=length
                     )
-    # TODO create and return proper Crossword object
-    crossword = hardcoded_crossword
+                )
+    crossword = Crossword(
+        row_number=data.shape[0],
+        col_number=data.shape[1],
+        nodes=crossword_nodes
+    )
     return crossword
 
 
-def image_to_json(base_image_path, IMG_SHAPE=(64, 64), CAT_MAPPING={}):
-    MODEL_PATH = str(Path(os.path.realpath(__file__)).parent) + "/model.pt"
-    MATRIX_SIZE = sorted(list(map(lambda x: list(map(int, x.split('.')[0].split('_'))),
+def image_to_json(base_image_path, IMG_SHAPE=(64, 64), category_mapper={}):
+    model_path = str(Path(os.path.realpath(__file__)).parent) + "/model.pt"
+
+    if not os.listdir(base_image_path):
+        return None
+
+    matrix_size = sorted(list(map(lambda x: list(map(int, x.split('.')[0].split('_'))),
                                   [f for f in os.listdir(base_image_path) if "_" in f])))[-1]
-    N_CLASSES = len(CAT_MAPPING)
-    propertyMatrix = np.zeros((MATRIX_SIZE[0] + 1, MATRIX_SIZE[1] + 1))
-    textualPropertyMatrix = pd.DataFrame(np.zeros((MATRIX_SIZE[0] + 1, MATRIX_SIZE[1] + 1)))
+    number_of_categories = len(category_mapper)
+    property_matrix = np.zeros((matrix_size[0] + 1, matrix_size[1] + 1))
+    textual_property_matrix = pd.DataFrame(np.zeros((matrix_size[0] + 1, matrix_size[1] + 1)))
 
     # load model
-    net = Net(N_CLASSES)
-    net.load_state_dict(torch.load(MODEL_PATH))
+    net = Net(number_of_categories)
+    net.load_state_dict(torch.load(model_path))
     net.eval()
 
     # define basic image transforms for preprocessing
@@ -344,10 +365,12 @@ def image_to_json(base_image_path, IMG_SHAPE=(64, 64), CAT_MAPPING={}):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = transform(image).reshape(1, 3, IMG_SHAPE[0], IMG_SHAPE[1])
         pred = net(Variable(image)).detach().numpy()
-        propertyMatrix[idxs[0], idxs[1]] = np.argmax(pred)
-        textualPropertyMatrix.iloc[idxs[0], idxs[1]] = CAT_MAPPING[np.argmax(pred)]
+        property_matrix[idxs[0], idxs[1]] = np.argmax(pred)
+        textual_property_matrix.iloc[idxs[0], idxs[1]] = category_mapper[np.argmax(pred)]
+        # TODO helpful print showing prediction of field
+        # print(img_path + " " + str(category_mapper[np.argmax(pred)]))
 
-    return extract_crossword_to_model(textualPropertyMatrix, base_image_path)
+    return extract_crossword_to_model(textual_property_matrix, base_image_path)
 
 
 def extract_crossword(unprocessed_image_path, base_image_path):
@@ -355,8 +378,6 @@ def extract_crossword(unprocessed_image_path, base_image_path):
 
     image = cv2.imread(unprocessed_image_path)
 
-    # find crossword lines
-    # print('Extracting grid from the crossword...\n')
     lines = get_lines(image, filter=True)
 
     if lines is None:
@@ -369,14 +390,18 @@ def extract_crossword(unprocessed_image_path, base_image_path):
     # find line intersection points
     intersections = segmented_intersections(lines)
 
-    # print('Creating crop for each crossword cell...\n')
     # crop each cell to a separate file
-    create_crops(intersections, image, base_image_path)
+    image = create_crops(intersections, image, base_image_path)
 
-    # print('Extracting JSON from the crossword...\n')
-    # extract json from a given image
-    crossword = image_to_json(base_image_path, CAT_MAPPING=CAT_MAPPING)
+    if type(image) is CrosswordSolvingMessage:
+        return None, image
 
-    logger.info(f'Crossword successfully solved in {time() - t1} seconds')
+    crossword = image_to_json(base_image_path, category_mapper=category_mapper)
+
+    if crossword is None:
+        logger.info(f'Error during processing: {CrosswordSolvingMessage.SOLVING_ERROR_NO_CROSSWORD.value}')
+        return None, CrosswordSolvingMessage.SOLVING_ERROR_NO_CROSSWORD
+
+    logger.info(f'Crossword successfully extracted in {round(time() - t1, 2)} sec.')
 
     return crossword, CrosswordSolvingMessage.SOLVED_SUCCESSFUL

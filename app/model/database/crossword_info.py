@@ -14,6 +14,8 @@ class CrosswordStatus(Enum):
 class CrosswordSolvingMessage(Enum):
     SOLVED_SUCCESSFUL = 'solved_successfully'
     SOLVING_ERROR_NO_LINES = 'lines_not_found'
+    SOLVING_ERROR_NO_CROSSWORD = "crossword_not_found"
+    SOLVING_ERROR_CANNOT_CROPPED_IMAGES = "cannot_cropped_images"
 
 
 class CrosswordInfo(db.Model):
