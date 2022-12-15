@@ -8,7 +8,7 @@ class CrosswordNode:
         self.direction = direction
         self.solution_start_position = solution_start_position
         self.length = length
-        self.solution = "*" * self.length
+        self.solution = ""
         self.possible_answers = []
 
     async def scrap_possible_answers(self):

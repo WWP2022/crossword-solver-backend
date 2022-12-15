@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import re
 
 from app.model.database.crossword_clue import CrosswordClue
@@ -18,13 +19,40 @@ class Crossword:
             line = line[:node.position_of_definition[1]] + "#" + line[node.position_of_definition[1] + 1:]
             self.data[node.position_of_definition[0]] = line
 
-    def solve(self, user_id: str):
-        self.scrap_possible_answers_for_crossword(user_id)
-        # TODO flaga czy coś przy iteracji się zmieniło
-        # TODO Rozwiniecie algorytmu o backtracking
-        for i in range(10):
-            self.fill_crossword()
-            self.remove_wrong_possible_answers()
+    def is_crossword_solved(self):
+        number_of_dots = 0
+        for line in self.data:
+            number_of_dots += line.count(".")
+        return number_of_dots == 0
+
+    def get_node_solution_from_data(self, node):
+        solution = ""
+        if node.direction == "right":
+            solution = self.data[node.solution_start_position[0]][
+                       node.solution_start_position[1]:node.solution_start_position[1] + node.length]
+        else:
+            for i in range(node.length):
+                solution = solution + self.data[node.solution_start_position[0] + i][node.solution_start_position[1]]
+        return solution
+
+    def extract_solutions_to_nodes_from_data(self):
+        for node in self.nodes:
+            if node.solution == "":
+                solution = self.get_node_solution_from_data(node)
+                if solution.count(".") == 0:
+                    node.solution = solution
+        self.nodes = list(filter(lambda element: element.solution != "", self.nodes))
+
+    def is_better_than(self, other_crossword):
+        solved_places = 0
+        for line in self.data:
+            solved_places += len(line.replace(".", "").replace("#", ""))
+
+        solved_places_for_other_solution = 0
+        for line in other_crossword.data:
+            solved_places_for_other_solution += len(line.replace(".", "").replace("#", ""))
+
+        return solved_places > solved_places_for_other_solution
 
     def scrap_possible_answers_for_crossword(self, user_id: str):
         async def spawn_task():
@@ -45,9 +73,10 @@ class Crossword:
 
         asyncio.run(spawn_task())
 
-    def fill_crossword(self):
+    def fill_crossword_and_remove_wrong_possible_answers(self):
+        is_something_changed = False
         for node in self.nodes:
-            if len(node.possible_answers) == 1:
+            if len(node.possible_answers) == 1 and node.solution == "":
                 node.solution = node.possible_answers[0]
                 if node.direction == "down":
                     for idx, x in enumerate(node.possible_answers[0]):
@@ -60,21 +89,43 @@ class Crossword:
                         line = line[:node.solution_start_position[1] + idx] + x + line[node.solution_start_position[
                                                                                            1] + idx + 1:]
                         self.data[node.solution_start_position[0]] = line
+                is_something_changed = True
 
-    def remove_wrong_possible_answers(self):
         for node in self.nodes:
-            regex = ""
-            if node.direction == "right":
-                regex = self.data[node.solution_start_position[0]][
-                        node.solution_start_position[1]:node.solution_start_position[1] + node.length]
-            else:
-                for i in range(node.length):
-                    regex = regex + self.data[node.solution_start_position[0] + i][node.solution_start_position[1]]
-
-            regex = re.compile(regex)
+            regex = re.compile(self.get_node_solution_from_data(node))
             filtered = [i for i in node.possible_answers if regex.match(i)]
             node.possible_answers = filtered
+        return is_something_changed
+
+    def solve(self, user_id: str):
+        self.scrap_possible_answers_for_crossword(user_id)
+        crossword = self._solve_crossword()
+        self.nodes = crossword.nodes
+        self.data = crossword.data
+        self.extract_solutions_to_nodes_from_data()
 
     def print_result(self):
         for result in self.data:
             print(result)
+
+    def _solve_crossword(self):
+        while self.fill_crossword_and_remove_wrong_possible_answers():
+            pass
+
+        if self.is_crossword_solved():
+            return self
+
+        best_crossword = copy.deepcopy(self)
+
+        self.nodes.sort(key=lambda element: len(element.possible_answers), reverse=False)
+        for node in self.nodes:
+            if len(node.possible_answers) > 1:
+                tmp_possible_answers = node.possible_answers
+                for possible_answer in tmp_possible_answers:
+                    node.possible_answers = [possible_answer]
+                    tmp_crossword = self._solve_crossword()
+                    if tmp_crossword.is_better_than(best_crossword):
+                        best_crossword = copy.deepcopy(tmp_crossword)
+                    node.solution = ""
+                node.possible_answers = tmp_possible_answers
+        return best_crossword

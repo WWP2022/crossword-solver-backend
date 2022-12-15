@@ -52,10 +52,9 @@ async def find_possible_answers_3(search_meaning, length):
 async def find_possible_answers(search_meaning, length):
     possible_answers_1 = await find_possible_answers_1(search_meaning, length)
     possible_answers_2 = await find_possible_answers_2(search_meaning, length)
-    # possible_answers_3 = await find_possible_answers_3(search_meaning, length)
+    possible_answers_3 = await find_possible_answers_3(search_meaning, length)
 
-    possible_answers = list(set(possible_answers_1 + possible_answers_2))
-    # possible_answers = list(set(possible_answers_1 + possible_answers_2 + possible_answers_3))
+    possible_answers = list(set(possible_answers_1 + possible_answers_2 + possible_answers_3))
     # TODO helpful print showing definition and found possible answers from remote servers
     # print("Definition: " + str(search_meaning) + " length: " + str(length) + " possible answers: " + str(possible_answers))
     return possible_answers
