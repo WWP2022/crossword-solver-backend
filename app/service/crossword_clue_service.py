@@ -23,7 +23,7 @@ def add_questions_and_answers_from_crossword(crossword_info: CrosswordInfo):
             crossword_clue = CrosswordClue(
                 user_id=crossword_info.user_id,
                 question=node['question'].upper(),
-                answers=json.dumps(answer)
+                answers=json.dumps(list(answer))
             )
             rep.save_crossword_clue(crossword_clue)
             continue
@@ -37,8 +37,12 @@ def update_crossword_clue(crossword_clue: CrosswordClue, answers: list[str]):
     return rep.update_crossword_clue(crossword_clue, json.dumps(list(set(answers))))
 
 
-def get_crossword_clue_by_question_and_user_id(question, user_id):
-    return rep.find_crossword_clue_by_question_and_user_id(question, user_id)
+def get_crossword_clue_by_question_and_user_id(question: str, user_id: str):
+    return rep.find_crossword_clue_by_question_and_user_id(question.upper(), user_id)
+
+
+def find_crossword_clues_by_user_id(user_id: str):
+    return rep.find_crossword_clues_by_user_id(user_id)
 
 
 def delete_crossword_clue_by_question_and_user_id(question: str, user_id: str):
