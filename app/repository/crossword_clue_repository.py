@@ -26,6 +26,7 @@ def find_crossword_clues_by_user_id(user_id: str):
 
 
 def update_crossword_clue(crossword_clue: CrosswordClue, answers: str):
+    crossword_clue.answers = answers
     db.session.commit()
     return crossword_clue
 
