@@ -9,7 +9,7 @@ def add_crossword_clue(question: str, answers: list[str], user_id: str):
     answers = list(set([answer.upper() for answer in answers]))
     crossword_clue_to_add = CrosswordClue(
         user_id=user_id,
-        question=question,
+        question=question.upper(),
         answers=json.dumps(answers)
     )
     return rep.save_crossword_clue(crossword_clue_to_add)
@@ -18,11 +18,11 @@ def add_crossword_clue(question: str, answers: list[str], user_id: str):
 def add_questions_and_answers_from_crossword(crossword_info: CrosswordInfo):
     for node in json.loads(crossword_info.questions_and_answers):
         crossword_clue = rep.find_crossword_clue_by_question_and_user_id(node['question'], crossword_info.user_id)
-        answer = node['answer'].split(" ")[0]
+        answer = node['answer']
         if crossword_clue is None:
             crossword_clue = CrosswordClue(
                 user_id=crossword_info.user_id,
-                question=node['question'],
+                question=node['question'].upper(),
                 answers=json.dumps(answer)
             )
             rep.save_crossword_clue(crossword_clue)
