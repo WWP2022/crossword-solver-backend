@@ -23,7 +23,7 @@ def add_questions_and_answers_from_crossword(crossword_info: CrosswordInfo):
             crossword_clue = CrosswordClue(
                 user_id=crossword_info.user_id,
                 question=node['question'].upper(),
-                answers=json.dumps(list(answer))
+                answers=json.dumps([answer])
             )
             rep.save_crossword_clue(crossword_clue)
             continue
