@@ -342,8 +342,9 @@ def extract_crossword_to_model(data, base_image_path):
 def image_to_json(base_image_path, IMG_SHAPE=(64, 64), category_mapper={}):
     model_path = str(Path(os.path.realpath(__file__)).parent) + "/model.pt"
 
-    if not os.listdir(base_image_path):
+    if len(os.listdir(base_image_path)) == 1:
         return None
+    print(os.listdir(base_image_path))
 
     matrix_size = sorted(list(map(lambda x: list(map(int, x.split('.')[0].split('_'))),
                                   [f for f in os.listdir(base_image_path) if "_" in f])))[-1]
