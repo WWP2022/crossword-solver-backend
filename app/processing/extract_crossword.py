@@ -15,6 +15,7 @@ from app.model.crossword import Crossword
 from app.model.crossword_node import CrosswordNode
 from app.model.database.crossword_info import CrosswordSolvingMessage
 from app.model.ml.pytorchModel import Net
+from app.utils import spell_corrector
 from app.utils.docker_logs import get_logger
 
 logger = get_logger('extract_crossword')
@@ -225,10 +226,15 @@ def create_crops(intersections, image, base_image_path):
 
     xs = sorted(np.unique(np.asarray(intersections)[:, 0, 0]))
     ys = sorted(np.unique(np.asarray(intersections)[:, 0, 1]))
+    first_image_size = 0
     for i, x in enumerate(xs[:-1]):
         for j, y in enumerate(ys[:-1]):
             cropImage = image[y:ys[j + 1], x:xs[i + 1]]
             # TODO Może lepiej jest inaczej to sprawdzać jakoś, wcześniej wyłapać to?
+            if first_image_size == 0:
+                first_image_size = cropImage.size
+            elif not (first_image_size * 0.7 < cropImage.size < first_image_size * 1.3):
+                return CrosswordSolvingMessage.SOLVING_ERROR_CANNOT_CROPPED_IMAGES
             if not cropImage.any():
                 return CrosswordSolvingMessage.SOLVING_ERROR_CANNOT_CROPPED_IMAGES
             cv2.imwrite(base_image_path + f'{j}_{i}.png', cropImage)
@@ -251,6 +257,7 @@ def ocr_core(filename):
     text = pytesseract.image_to_string(image_2, lang='pol', config=r'--psm 11')
 
     text_with_corrections = " ".join(text.split()).replace("- ", "")
+    text_with_corrections = spell_corrector.correct_question(text_with_corrections)
     # TODO helpful print showing ocr on each field
     # print("Filename: " + filename + " Ocr: " + text_with_corrections)
     return text_with_corrections
