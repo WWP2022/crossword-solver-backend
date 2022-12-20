@@ -1,5 +1,6 @@
 import asyncio
 import copy
+import json
 import re
 
 from app.model.database.crossword_clue import CrosswordClue
@@ -65,7 +66,7 @@ class Crossword:
                     user_id
                 )
                 if crossword_clue is not None:
-                    node.possible_answers = crossword_clue.answers
+                    node.possible_answers = json.loads(crossword_clue.answers)
                 else:
                     task_list.append(asyncio.create_task(node.scrap_possible_answers()))
 
@@ -123,7 +124,8 @@ class Crossword:
                 tmp_possible_answers = node.possible_answers
                 for possible_answer in tmp_possible_answers:
                     node.possible_answers = [possible_answer]
-                    tmp_crossword = self._solve_crossword()
+                    crossword_copy = copy.deepcopy(self)
+                    tmp_crossword = crossword_copy._solve_crossword()
                     if tmp_crossword.is_better_than(best_crossword):
                         best_crossword = copy.deepcopy(tmp_crossword)
                     node.solution = ""
