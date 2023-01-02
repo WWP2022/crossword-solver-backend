@@ -62,10 +62,6 @@ def get_crossword_processed_images_ids_names_and_timestamps_by_user_id(user_id: 
              "timestamp": info.timestamp} for info in crossword_info]
 
 
-def get_number_of_all_crossword_by_user_id(user_id: str):
-    return crossword_repository.get_number_crosswords_info_by_user_id(user_id)
-
-
 def update_crossword(crossword_info: CrosswordInfo, crossword_name, is_accepted=True):
     if is_accepted:
         crossword_clue_service.add_questions_and_answers_from_crossword(crossword_info)
