@@ -32,6 +32,11 @@ async def find_possible_answers_2(search_meaning, length):
             possible_answers = possible_answers + [possible_answer.getText().upper() for possible_answer in
                                                    soup.findAll(name="span", attrs={"class": "answer"})]
 
+            possible_answers = possible_answers + [possible_answer.getText().upper() for possible_answer in
+                                                   soup.findAll(name="td", attrs={"class": "answer"}) if
+                                                   len(possible_answer.getText()) == length and possible_answer
+                                                   not in possible_answers]
+
             return possible_answers
 
 
@@ -60,5 +65,5 @@ async def find_possible_answers(search_meaning, length):
     # TODO                                         change this to set max length of possible answers
     possible_answers = list(possible_answers_2)[0:len(possible_answers_2)]
     # TODO helpful print showing definition and found possible answers from remote servers
-    # print("Definition: " + str(search_meaning) + " length: " + str(length) + " possible answers: " + str(possible_answers))
+    print("Definition: " + str(search_meaning) + " length: " + str(length) + " possible answers: " + str(possible_answers))
     return possible_answers

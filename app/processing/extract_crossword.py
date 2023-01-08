@@ -15,6 +15,7 @@ from app.model.crossword import Crossword
 from app.model.crossword_node import CrosswordNode
 from app.model.database.crossword_info import CrosswordSolvingMessage
 from app.model.ml.pytorchModel import Net
+from app.processing.result_image import create_result_image
 from app.utils import spell_corrector
 from app.utils.docker_logs import get_logger
 
@@ -70,7 +71,7 @@ def get_lines(image, filter=True):
     lines = cv2.HoughLines(edges, 1, np.pi / 180, 275)
 
     # This image not show all lines, we have also correct_lines
-    # cv2.imwrite('edges.jpg', edges)
+    cv2.imwrite('edges.jpg', edges)
     if lines is None:
         return None
 
@@ -124,7 +125,7 @@ def get_lines(image, filter=True):
                     line_flags[
                         indices[j]] = False  # if it is similar and have not been disregarded yet then drop it now
 
-    # print('number of Hough lines:', len(lines))
+    print('number of Hough lines:', len(lines))
 
     filtered_lines = []
 
@@ -133,7 +134,7 @@ def get_lines(image, filter=True):
             if line_flags[i]:
                 filtered_lines.append(lines[i])
 
-        # print('Number of filtered lines:', len(filtered_lines))
+        print('Number of filtered lines:', len(filtered_lines))
     else:
         filtered_lines = lines
 
@@ -150,8 +151,8 @@ def get_lines(image, filter=True):
             final_lines.append(line)
 
     # TODO useful images to see processing
-    # cv2.imwrite('hough.jpg', image)
-    # cv2.imwrite('mask.jpg', mask)
+    cv2.imwrite('hough.jpg', image)
+    cv2.imwrite('mask.jpg', mask)
 
     return final_lines
 
@@ -248,18 +249,35 @@ def ocr_core(filename):
     """
 
     image = cv2.imread(filename)
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # wszystkie wartości powyżej 120 zamieniane na 255(biały) dla lepszego kontrastu
-    image_2 = cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY)[1]
+    image_2 = cv2.threshold(image, 120, 255, cv2.THRESH_BINARY)[1]  # parameters to change
     # TODO helpful image shows how look field before reading data
-    # cv2.imwrite(filename, image_2)
+    cv2.imwrite(filename, image_2)
 
-    text = pytesseract.image_to_string(image_2, lang='pol', config=r'--psm 11')
 
-    text_with_corrections = " ".join(text.split()).replace("- ", "")
+    text = pytesseract.image_to_string(
+        image_2,
+        lang='pol',
+        config='''--psm 6 -c tessedit_char_whitelist=aąbcćdeęfghijklłmnńoópqrsśtuvwxyzźżAĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ.$%!?&\\'\\"'''  # --psm --oem -c options
+    )
+    # legacy engine is not working ?with Polish language? - always pytesseract.pytesseract.TesseractError: (1,
+    # "Error: Tesseract (legacy) engine requested, but components are not present in
+    # /usr/share/tesseract-ocr/4.00/tessdata/pol.traineddata!! Failed loading language 'pol' Tesseract couldn't load
+    # any languages! Could not initialize tesseract."
+    '''
+      --oem NUM             Specify OCR Engine mode.
+        OCR Engine modes: (see https://github.com/tesseract-ocr/tesseract/wiki#linux)
+          0    Legacy engine only.
+          1    Neural nets LSTM engine only.
+          2    Legacy + LSTM engines.
+          3    Default, based on what is available.
+    '''
+
+    text_with_corrections = " ".join(text.split()).replace("- ", "").replace("|", "")
     text_with_corrections = spell_corrector.correct_question(text_with_corrections)
     # TODO helpful print showing ocr on each field
-    # print("Filename: " + filename + " Ocr: " + text_with_corrections)
+    print("Filename: " + filename + " Ocr: " + text_with_corrections)
     return text_with_corrections
 
 
@@ -286,7 +304,7 @@ def find_solution(data, i, j):
         return ['right', i, j + 1]
     if number_of_rows > i + 1 and data.iloc[i + 1, j] == 'right_and_down':  # down
         return ['down', i + 1, j]
-    # 4 ifs beloaw are workaround for not proper divide field
+    # 4 ifs below are workaround for not proper divide field
     if number_of_rows > i + 1 and data.iloc[i + 1, j] == 'right':
         return ['right', i + 1, j]
     if i - 1 >= 0 and data.iloc[i - 1, j] == 'right':
@@ -385,7 +403,7 @@ def image_to_json(base_image_path, IMG_SHAPE=(64, 64), category_mapper={}):
         property_matrix[idxs[0], idxs[1]] = np.argmax(pred)
         textual_property_matrix.iloc[idxs[0], idxs[1]] = category_mapper[np.argmax(pred)]
         # TODO helpful print showing prediction of field
-        # print(img_path + " " + str(category_mapper[np.argmax(pred)]))
+        print(img_path + " " + str(category_mapper[np.argmax(pred)]))
 
     return extract_crossword_to_model(textual_property_matrix, base_image_path)
 
