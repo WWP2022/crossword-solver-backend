@@ -3,11 +3,9 @@ from pathlib import Path
 
 from PIL import ImageFont, ImageDraw, Image
 
-
-def draw_letter_on_image(file_name, letter):
+def find_proper_font(file_name):
     image = Image.open(file_name)
-    draw = ImageDraw.Draw(image)
-    txt = letter
+    txt = 'A'
     fontsize = 1  # starting font size
 
     W, H = image.size
@@ -24,13 +22,20 @@ def draw_letter_on_image(file_name, letter):
         fontsize += 1
         font = ImageFont.truetype(font_path, fontsize)
 
-    # optionally de-increment to be sure it is less than criteria
+    # subtracting to be sure it is less than criteria
     fontsize -= 40
-    font = ImageFont.truetype(font_path, fontsize)
+
+    return ImageFont.truetype(font_path, fontsize)
+
+def draw_letter_on_image(file_name, letter, font):
+    image = Image.open(file_name)
+    draw = ImageDraw.Draw(image)
+    txt = letter
+
+    W, H = image.size
 
     w, h = draw.textsize(txt, font=font)
 
-    # print 'final font size',fontsize
     draw.text(((W - w) / 2, (H - h) / 2), txt, font=font, fill="black")  # put the text on the image
     image.save(file_name)  # save it
 
@@ -40,11 +45,13 @@ def create_result_image(crossword, base_image_path, unprocessed_image_path):
     new_im = Image.new('RGB', image.size)
 
     curr_x, curr_y = (0, 0)
+
+    font = find_proper_font(base_image_path + "0_0.png")
     for i in range(crossword.row_number):
         for j in range(crossword.col_number):
             path = base_image_path + str(i) + "_" + str(j) + ".png"
             if crossword.data[i][j] not in ["#", "."]:
-                draw_letter_on_image(path, crossword.data[i][j])
+                draw_letter_on_image(path, crossword.data[i][j], font)
             image = Image.open(path)
             new_im.paste(image, (curr_x, curr_y))
             curr_x += image.width
