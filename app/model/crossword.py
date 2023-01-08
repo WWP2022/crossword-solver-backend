@@ -130,4 +130,5 @@ class Crossword:
                         best_crossword = copy.deepcopy(tmp_crossword)
                     node.solution = ""
                 node.possible_answers = tmp_possible_answers
+                break
         return best_crossword

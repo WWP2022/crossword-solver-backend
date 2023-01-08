@@ -286,6 +286,15 @@ def find_solution(data, i, j):
         return ['right', i, j + 1]
     if number_of_rows > i + 1 and data.iloc[i + 1, j] == 'right_and_down':  # down
         return ['down', i + 1, j]
+    # 4 ifs beloaw are workaround for not proper divide field
+    if number_of_rows > i + 1 and data.iloc[i + 1, j] == 'right':
+        return ['right', i + 1, j]
+    if i - 1 >= 0 and data.iloc[i - 1, j] == 'right':
+        return ['right', i - 1, j]
+    if number_of_cols > j + 1 and data.iloc[i, j + 1] == 'down':
+        return ['down', i, j + 1]
+    if j - 1 >= 0 and data.iloc[i, j - 1] == 'down':
+        return ['down', i, j - 1]
     print(f'No arrow find for: [{i}, {j}]')
     return None
 
