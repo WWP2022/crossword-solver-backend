@@ -249,17 +249,22 @@ def ocr_core(filename):
     """
 
     image = cv2.imread(filename)
+    norm_img = np.zeros((image.shape[0], image.shape[1]))
+    img = cv2.normalize(image, norm_img, 0, 255, cv2.NORM_MINMAX)
+    img = cv2.threshold(img, 100, 255, cv2.THRESH_BINARY)[1]
+    image_2 = cv2.GaussianBlur(img, (1, 1), 0)
+
     # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # wszystkie wartości powyżej 120 zamieniane na 255(biały) dla lepszego kontrastu
-    image_2 = cv2.threshold(image, 120, 255, cv2.THRESH_BINARY)[1]  # parameters to change
+    # image_2 = cv2.threshold(image, 100, 255, cv2.THRESH_BINARY)[1]  # parameters to change
     # TODO helpful image shows how look field before reading data
     cv2.imwrite(filename, image_2)
-
 
     text = pytesseract.image_to_string(
         image_2,
         lang='pol',
-        config='''--psm 6 -c tessedit_char_whitelist=aąbcćdeęfghijklłmnńoópqrsśtuvwxyzźżAĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ.$%!?&\\'\\"'''  # --psm --oem -c options
+        # config='''--psm 11 -c tessedit_char_whitelist=aąbcćdeęfghijklłmnńoópqrsśtuvwxyzźżAĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ.$%!?&\\'\\"'''  # --psm --oem -c options
+        config="--psm 6"  # --psm --oem -c options
     )
     # legacy engine is not working ?with Polish language? - always pytesseract.pytesseract.TesseractError: (1,
     # "Error: Tesseract (legacy) engine requested, but components are not present in
@@ -275,7 +280,7 @@ def ocr_core(filename):
     '''
 
     text_with_corrections = " ".join(text.split()).replace("- ", "").replace("|", "")
-    text_with_corrections = spell_corrector.correct_question(text_with_corrections)
+    # text_with_corrections = spell_corrector.correct_question(text_with_corrections)
     # TODO helpful print showing ocr on each field
     print("Filename: " + filename + " Ocr: " + text_with_corrections)
     return text_with_corrections
@@ -440,3 +445,11 @@ def extract_crossword(unprocessed_image_path, base_image_path):
     logger.info(f'Crossword successfully extracted in {round(time() - t1, 2)} sec.')
 
     return crossword, CrosswordSolvingMessage.SOLVED_SUCCESSFUL
+
+
+# crossword_path = \
+#     "/home/priv/PycharmProjects/crossword-solver-backend-v2/app/assets/crossword_examples/crosswords/31.png"
+#
+# crossword, solving_message = extract_crossword(crossword_path, "1/")
+# crossword.solve("crossword_task.user_id")
+# processed_local_path = create_result_image(crossword, "1/", crossword_path)

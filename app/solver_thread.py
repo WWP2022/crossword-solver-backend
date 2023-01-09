@@ -3,7 +3,7 @@ import threading
 from app.clients.postgres_client import app
 from app.service.crossword_service import solve_crossword_if_exist
 
-POOL_TIME = 10
+POOL_TIME = 2
 
 # lock to control access to variable
 data_lock = threading.Lock()

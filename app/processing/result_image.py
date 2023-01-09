@@ -60,5 +60,6 @@ def create_result_image(crossword, base_image_path, unprocessed_image_path):
         curr_y += image.height
 
     new_im.save(base_image_path + "processed.png")
+    # new_im.save("/home/priv/PycharmProjects/crossword-solver-backend-v2/app/processing/" + "processed.png")
 
     return base_image_path + "processed.png"
