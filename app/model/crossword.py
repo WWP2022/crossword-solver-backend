@@ -2,7 +2,7 @@ import asyncio
 import copy
 import json
 import re
-from datetime import time
+from time import time
 
 from app.model.database.crossword_clue import CrosswordClue
 from app.service import crossword_clue_service
