@@ -2,10 +2,13 @@ import asyncio
 import copy
 import json
 import re
+from datetime import time
 
 from app.model.database.crossword_clue import CrosswordClue
 from app.service import crossword_clue_service
-from app.utils import spell_corrector
+from app.utils.docker_logs import get_logger
+
+logger = get_logger('crossword_solver')
 
 
 class Crossword:
@@ -60,6 +63,7 @@ class Crossword:
             task_list = []
 
             for node in self.nodes:
+                # TODO consider to remove this line
                 # correct_question = spell_corrector.correct_question(node.definition)
                 correct_question = node.definition
                 crossword_clue: CrosswordClue = crossword_clue_service.get_crossword_clue_by_question_and_user_id(
@@ -100,11 +104,13 @@ class Crossword:
         return is_something_changed
 
     def solve(self, user_id: str):
+        start_solving_time = time()
         self.scrap_possible_answers_for_crossword(user_id)
         crossword = self._solve_crossword()
         self.nodes = crossword.nodes
         self.data = crossword.data
         self.extract_solutions_to_nodes_from_data()
+        logger.info(f'Solving time: {round(time() - start_solving_time, 2)} sec.')
 
     def print_result(self):
         for result in self.data:
