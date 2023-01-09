@@ -71,7 +71,7 @@ def get_lines(image, filter=True):
     lines = cv2.HoughLines(edges, 1, np.pi / 180, 275)
 
     # This image not show all lines, we have also correct_lines
-    cv2.imwrite('edges.jpg', edges)
+    # cv2.imwrite('edges.jpg', edges)
     if lines is None:
         return None
 
@@ -125,7 +125,7 @@ def get_lines(image, filter=True):
                     line_flags[
                         indices[j]] = False  # if it is similar and have not been disregarded yet then drop it now
 
-    print('number of Hough lines:', len(lines))
+    # print('number of Hough lines:', len(lines))
 
     filtered_lines = []
 
@@ -134,7 +134,7 @@ def get_lines(image, filter=True):
             if line_flags[i]:
                 filtered_lines.append(lines[i])
 
-        print('Number of filtered lines:', len(filtered_lines))
+        # print('Number of filtered lines:', len(filtered_lines))
     else:
         filtered_lines = lines
 
@@ -151,8 +151,8 @@ def get_lines(image, filter=True):
             final_lines.append(line)
 
     # TODO useful images to see processing
-    cv2.imwrite('hough.jpg', image)
-    cv2.imwrite('mask.jpg', mask)
+    # cv2.imwrite('hough.jpg', image)
+    # cv2.imwrite('mask.jpg', mask)
 
     return final_lines
 
@@ -258,7 +258,7 @@ def ocr_core(filename):
     # wszystkie wartości powyżej 120 zamieniane na 255(biały) dla lepszego kontrastu
     # image_2 = cv2.threshold(image, 100, 255, cv2.THRESH_BINARY)[1]  # parameters to change
     # TODO helpful image shows how look field before reading data
-    cv2.imwrite(filename, image_2)
+    # cv2.imwrite(filename, image_2)
 
     text = pytesseract.image_to_string(
         image_2,
@@ -282,7 +282,7 @@ def ocr_core(filename):
     text_with_corrections = " ".join(text.split()).replace("- ", "").replace("|", "")
     # text_with_corrections = spell_corrector.correct_question(text_with_corrections)
     # TODO helpful print showing ocr on each field
-    print("Filename: " + filename + " Ocr: " + text_with_corrections)
+    # print("Filename: " + filename + " Ocr: " + text_with_corrections)
     return text_with_corrections
 
 
@@ -376,7 +376,7 @@ def image_to_json(base_image_path, IMG_SHAPE=(64, 64), category_mapper={}):
 
     if len(os.listdir(base_image_path)) == 1:
         return None
-    print(os.listdir(base_image_path))
+    # print(os.listdir(base_image_path))
 
     matrix_size = sorted(list(map(lambda x: list(map(int, x.split('.')[0].split('_'))),
                                   [f for f in os.listdir(base_image_path) if "_" in f])))[-1]
@@ -408,17 +408,21 @@ def image_to_json(base_image_path, IMG_SHAPE=(64, 64), category_mapper={}):
         property_matrix[idxs[0], idxs[1]] = np.argmax(pred)
         textual_property_matrix.iloc[idxs[0], idxs[1]] = category_mapper[np.argmax(pred)]
         # TODO helpful print showing prediction of field
-        print(img_path + " " + str(category_mapper[np.argmax(pred)]))
+        # print(img_path + " " + str(category_mapper[np.argmax(pred)]))
 
     return extract_crossword_to_model(textual_property_matrix, base_image_path)
 
 
 def extract_crossword(unprocessed_image_path, base_image_path):
     t1 = time()
+    time_tmp = time()
 
     image = cv2.imread(unprocessed_image_path)
 
     lines = get_lines(image, filter=True)
+
+    logger.info(f'Get lines in {round(time() - time_tmp, 2)} sec.')
+    time_tmp = time()
 
     if lines is None:
         logger.info(f'Error during processing: {CrosswordSolvingMessage.SOLVING_ERROR_NO_LINES.value}')
@@ -427,16 +431,27 @@ def extract_crossword(unprocessed_image_path, base_image_path):
     # corrects some missing lines
     lines = correct_lines(lines)
 
+    logger.info(f'Correct lines in {round(time() - time_tmp, 2)} sec.')
+    time_tmp = time()
+
     # find line intersection points
     intersections = segmented_intersections(lines)
 
+    logger.info(f'Intersections in {round(time() - time_tmp, 2)} sec.')
+    time_tmp = time()
+
     # crop each cell to a separate file
     image = create_crops(intersections, image, base_image_path)
+
+    logger.info(f'Create crops in {round(time() - time_tmp, 2)} sec.')
+    time_tmp = time()
 
     if type(image) is CrosswordSolvingMessage:
         return None, image
 
     crossword = image_to_json(base_image_path, category_mapper=category_mapper)
+
+    logger.info(f'Read crossword in {round(time() - time_tmp, 2)} sec.')
 
     if crossword is None:
         logger.info(f'Error during processing: {CrosswordSolvingMessage.SOLVING_ERROR_NO_CROSSWORD.value}')
@@ -445,11 +460,3 @@ def extract_crossword(unprocessed_image_path, base_image_path):
     logger.info(f'Crossword successfully extracted in {round(time() - t1, 2)} sec.')
 
     return crossword, CrosswordSolvingMessage.SOLVED_SUCCESSFUL
-
-
-# crossword_path = \
-#     "/home/priv/PycharmProjects/crossword-solver-backend-v2/app/assets/crossword_examples/crosswords/31.png"
-#
-# crossword, solving_message = extract_crossword(crossword_path, "1/")
-# crossword.solve("crossword_task.user_id")
-# processed_local_path = create_result_image(crossword, "1/", crossword_path)

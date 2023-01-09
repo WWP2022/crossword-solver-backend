@@ -61,14 +61,15 @@ class Crossword:
 
             for node in self.nodes:
                 # correct_question = spell_corrector.correct_question(node.definition)
-                # crossword_clue: CrosswordClue = crossword_clue_service.get_crossword_clue_by_question_and_user_id(
-                #     correct_question,
-                #     user_id
-                # )
-                # if crossword_clue is not None:
-                #     node.possible_answers = json.loads(crossword_clue.answers)
-                # else:
-                task_list.append(asyncio.create_task(node.scrap_possible_answers()))
+                correct_question = node.definition
+                crossword_clue: CrosswordClue = crossword_clue_service.get_crossword_clue_by_question_and_user_id(
+                    correct_question,
+                    user_id
+                )
+                if crossword_clue is not None:
+                    node.possible_answers = json.loads(crossword_clue.answers)
+                else:
+                    task_list.append(asyncio.create_task(node.scrap_possible_answers()))
 
             await asyncio.gather(*task_list)
 
