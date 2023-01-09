@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+from datetime import time
 
 from PIL import Image
 
@@ -12,6 +13,9 @@ from app.model.database.crossword_task import CrosswordTask
 from app.processing.extract_crossword import extract_crossword
 from app.processing.result_image import create_result_image
 from app.service import crossword_clue_service
+from app.utils.docker_logs import get_logger
+
+logger = get_logger('crossword_service')
 
 
 def remove_unnecessary_files(base_image_path: str):
@@ -62,10 +66,6 @@ def get_crossword_processed_images_ids_names_and_timestamps_by_user_id(user_id: 
              "timestamp": info.timestamp} for info in crossword_info]
 
 
-def get_number_of_all_crossword_by_user_id(user_id: str):
-    return crossword_repository.get_number_crosswords_info_by_user_id(user_id)
-
-
 def update_crossword(crossword_info: CrosswordInfo, crossword_name, is_accepted=True):
     if is_accepted:
         crossword_clue_service.add_questions_and_answers_from_crossword(crossword_info)
@@ -94,6 +94,7 @@ def solve_crossword_if_exist():
         crossword_task.crossword_info_id,
         CrosswordStatus.SOLVING.value
     )
+    logger.info(f'Extract crossword with id {crossword_task.crossword_info_id} starting.')
 
     # fetching necessary paths and user_id
     base_image_path = crossword_task.base_image_path

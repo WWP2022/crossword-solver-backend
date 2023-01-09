@@ -48,13 +48,6 @@ def find_crosswords_info_by_user_id(user_id: str):
         .all()
 
 
-def get_number_crosswords_info_by_user_id(user_id: str):
-    return db.session \
-        .query(CrosswordInfo) \
-        .filter(CrosswordInfo.user_id == user_id) \
-        .count()
-
-
 def find_crossword_info_by_crossword_id(crossword_id: int):
     return db.session \
         .query(CrosswordInfo) \

@@ -15,8 +15,6 @@ from app.model.crossword import Crossword
 from app.model.crossword_node import CrosswordNode
 from app.model.database.crossword_info import CrosswordSolvingMessage
 from app.model.ml.pytorchModel import Net
-from app.processing.result_image import create_result_image
-from app.utils import spell_corrector
 from app.utils.docker_logs import get_logger
 
 logger = get_logger('extract_crossword')
@@ -414,7 +412,6 @@ def image_to_json(base_image_path, IMG_SHAPE=(64, 64), category_mapper={}):
 
 
 def extract_crossword(unprocessed_image_path, base_image_path):
-    t1 = time()
     time_tmp = time()
 
     image = cv2.imread(unprocessed_image_path)
@@ -456,7 +453,5 @@ def extract_crossword(unprocessed_image_path, base_image_path):
     if crossword is None:
         logger.info(f'Error during processing: {CrosswordSolvingMessage.SOLVING_ERROR_NO_CROSSWORD.value}')
         return None, CrosswordSolvingMessage.SOLVING_ERROR_NO_CROSSWORD
-
-    logger.info(f'Crossword successfully extracted in {round(time() - t1, 2)} sec.')
 
     return crossword, CrosswordSolvingMessage.SOLVED_SUCCESSFUL

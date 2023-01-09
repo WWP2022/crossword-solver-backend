@@ -21,7 +21,6 @@ app.add_url_rule('/api/solver', view_func=solver_resource.solve)
 
 app.add_url_rule('/api/register', view_func=user_resource.register)
 app.add_url_rule('/api/login', view_func=user_resource.login)
-app.add_url_rule('/api/user/info', view_func=user_resource.user_info)
 
 if __name__ == "__main__":
     # start thread for solving crosswords

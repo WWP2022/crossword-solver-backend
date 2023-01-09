@@ -13,3 +13,13 @@ def find_user_by_id(user_id: str):
         .query(User) \
         .filter(User.user_id == user_id) \
         .one_or_none()
+
+
+def update_number_of_crosswords(user_id, sent_crosswords):
+    user = db.session \
+        .query(User) \
+        .filter(User.user_id == user_id) \
+        .one_or_none()
+    user.sent_crosswords = sent_crosswords
+    db.session.commit()
+    return user

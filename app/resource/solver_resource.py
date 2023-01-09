@@ -17,11 +17,13 @@ def solve():
     if user is None:
         return jsonify({'error': 'User with given id does not exist'}), 401
 
-    default_crossword_name = crossword_service.get_default_name(user_id)
+    user = user_service.update_number_of_crosswords(user_id, user.sent_crosswords + 1)
+
+    default_crossword_name = crossword_service.get_default_name(user.user_id)
 
     crossword_task = crossword_service.add_crossword_task(
         file.stream,
-        user_id,
+        user.user_id,
         default_crossword_name,
         timestamp
     )
