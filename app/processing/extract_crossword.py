@@ -15,6 +15,7 @@ from app.model.crossword import Crossword
 from app.model.crossword_node import CrosswordNode
 from app.model.database.crossword_info import CrosswordSolvingMessage
 from app.model.ml.pytorchModel import Net
+from app.processing.result_image import create_result_image
 from app.utils import spell_corrector
 from app.utils.docker_logs import get_logger
 
@@ -248,16 +249,38 @@ def ocr_core(filename):
     """
 
     image = cv2.imread(filename)
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    norm_img = np.zeros((image.shape[0], image.shape[1]))
+    img = cv2.normalize(image, norm_img, 0, 255, cv2.NORM_MINMAX)
+    img = cv2.threshold(img, 100, 255, cv2.THRESH_BINARY)[1]
+    image_2 = cv2.GaussianBlur(img, (1, 1), 0)
+
+    # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # wszystkie wartości powyżej 120 zamieniane na 255(biały) dla lepszego kontrastu
-    image_2 = cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY)[1]
+    # image_2 = cv2.threshold(image, 100, 255, cv2.THRESH_BINARY)[1]  # parameters to change
     # TODO helpful image shows how look field before reading data
     # cv2.imwrite(filename, image_2)
 
-    text = pytesseract.image_to_string(image_2, lang='pol', config=r'--psm 11')
+    text = pytesseract.image_to_string(
+        image_2,
+        lang='pol',
+        # config='''--psm 11 -c tessedit_char_whitelist=aąbcćdeęfghijklłmnńoópqrsśtuvwxyzźżAĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ.$%!?&\\'\\"'''  # --psm --oem -c options
+        config="--psm 6"  # --psm --oem -c options
+    )
+    # legacy engine is not working ?with Polish language? - always pytesseract.pytesseract.TesseractError: (1,
+    # "Error: Tesseract (legacy) engine requested, but components are not present in
+    # /usr/share/tesseract-ocr/4.00/tessdata/pol.traineddata!! Failed loading language 'pol' Tesseract couldn't load
+    # any languages! Could not initialize tesseract."
+    '''
+      --oem NUM             Specify OCR Engine mode.
+        OCR Engine modes: (see https://github.com/tesseract-ocr/tesseract/wiki#linux)
+          0    Legacy engine only.
+          1    Neural nets LSTM engine only.
+          2    Legacy + LSTM engines.
+          3    Default, based on what is available.
+    '''
 
-    text_with_corrections = " ".join(text.split()).replace("- ", "")
-    text_with_corrections = spell_corrector.correct_question(text_with_corrections)
+    text_with_corrections = " ".join(text.split()).replace("- ", "").replace("|", "")
+    # text_with_corrections = spell_corrector.correct_question(text_with_corrections)
     # TODO helpful print showing ocr on each field
     # print("Filename: " + filename + " Ocr: " + text_with_corrections)
     return text_with_corrections
@@ -286,7 +309,7 @@ def find_solution(data, i, j):
         return ['right', i, j + 1]
     if number_of_rows > i + 1 and data.iloc[i + 1, j] == 'right_and_down':  # down
         return ['down', i + 1, j]
-    # 4 ifs beloaw are workaround for not proper divide field
+    # 4 ifs below are workaround for not proper divide field
     if number_of_rows > i + 1 and data.iloc[i + 1, j] == 'right':
         return ['right', i + 1, j]
     if i - 1 >= 0 and data.iloc[i - 1, j] == 'right':
@@ -353,7 +376,7 @@ def image_to_json(base_image_path, IMG_SHAPE=(64, 64), category_mapper={}):
 
     if len(os.listdir(base_image_path)) == 1:
         return None
-    print(os.listdir(base_image_path))
+    # print(os.listdir(base_image_path))
 
     matrix_size = sorted(list(map(lambda x: list(map(int, x.split('.')[0].split('_'))),
                                   [f for f in os.listdir(base_image_path) if "_" in f])))[-1]
@@ -392,10 +415,14 @@ def image_to_json(base_image_path, IMG_SHAPE=(64, 64), category_mapper={}):
 
 def extract_crossword(unprocessed_image_path, base_image_path):
     t1 = time()
+    time_tmp = time()
 
     image = cv2.imread(unprocessed_image_path)
 
     lines = get_lines(image, filter=True)
+
+    logger.info(f'Get lines in {round(time() - time_tmp, 2)} sec.')
+    time_tmp = time()
 
     if lines is None:
         logger.info(f'Error during processing: {CrosswordSolvingMessage.SOLVING_ERROR_NO_LINES.value}')
@@ -404,16 +431,27 @@ def extract_crossword(unprocessed_image_path, base_image_path):
     # corrects some missing lines
     lines = correct_lines(lines)
 
+    logger.info(f'Correct lines in {round(time() - time_tmp, 2)} sec.')
+    time_tmp = time()
+
     # find line intersection points
     intersections = segmented_intersections(lines)
 
+    logger.info(f'Intersections in {round(time() - time_tmp, 2)} sec.')
+    time_tmp = time()
+
     # crop each cell to a separate file
     image = create_crops(intersections, image, base_image_path)
+
+    logger.info(f'Create crops in {round(time() - time_tmp, 2)} sec.')
+    time_tmp = time()
 
     if type(image) is CrosswordSolvingMessage:
         return None, image
 
     crossword = image_to_json(base_image_path, category_mapper=category_mapper)
+
+    logger.info(f'Read crossword in {round(time() - time_tmp, 2)} sec.')
 
     if crossword is None:
         logger.info(f'Error during processing: {CrosswordSolvingMessage.SOLVING_ERROR_NO_CROSSWORD.value}')

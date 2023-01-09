@@ -60,7 +60,8 @@ class Crossword:
             task_list = []
 
             for node in self.nodes:
-                correct_question = spell_corrector.correct_question(node.definition)
+                # correct_question = spell_corrector.correct_question(node.definition)
+                correct_question = node.definition
                 crossword_clue: CrosswordClue = crossword_clue_service.get_crossword_clue_by_question_and_user_id(
                     correct_question,
                     user_id
