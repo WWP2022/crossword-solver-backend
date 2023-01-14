@@ -1,5 +1,3 @@
-import json
-
 from app.clients.postgres_client import db
 from app.model.database.crossword_clue import CrosswordClue
 
@@ -22,20 +20,19 @@ def find_crossword_clues_by_user_id(user_id: str):
     return db.session \
         .query(CrosswordClue) \
         .filter(CrosswordClue.user_id == user_id) \
+        .filter(CrosswordClue.is_perfect == True) \
         .all()
 
 
-def update_crossword_clue(crossword_clue: CrosswordClue, answers: str):
+def update_crossword_clue(crossword_clue: CrosswordClue, answers: list[str]):
     crossword_clue.answers = answers
     db.session.commit()
     return crossword_clue
 
 
 def add_answer_to_crossword_clue(crossword_clue, answer):
-    answers = json.loads(crossword_clue.answers)
-    answers += [answer]
-    answers = list(set(answers))
-    crossword_clue.answers = json.dumps(answers)
+    answers = list(set(crossword_clue.answers + answer))
+    crossword_clue.answers = answers
     db.session.commit()
     return crossword_clue
 

@@ -3,6 +3,7 @@ from pathlib import Path
 
 from PIL import ImageFont, ImageDraw, Image
 
+
 def find_proper_font(file_name):
     image = Image.open(file_name)
     txt = 'A'
@@ -27,6 +28,7 @@ def find_proper_font(file_name):
 
     return ImageFont.truetype(font_path, fontsize)
 
+
 def draw_letter_on_image(file_name, letter, font):
     image = Image.open(file_name)
     draw = ImageDraw.Draw(image)
@@ -50,8 +52,8 @@ def create_result_image(crossword, base_image_path, unprocessed_image_path):
     for i in range(crossword.row_number):
         for j in range(crossword.col_number):
             path = base_image_path + str(i) + "_" + str(j) + ".png"
-            if crossword.data[i][j] not in ["#", "."]:
-                draw_letter_on_image(path, crossword.data[i][j], font)
+            if crossword.grid[i][j] not in ["#", "."]:
+                draw_letter_on_image(path, crossword.grid[i][j], font)
             image = Image.open(path)
             new_im.paste(image, (curr_x, curr_y))
             curr_x += image.width

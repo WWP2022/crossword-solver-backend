@@ -1,7 +1,6 @@
 from flask import request, jsonify
 
 import app.service.user_service as user_service
-import app.service.crossword_service as crossword_service
 from app.clients.postgres_client import app
 
 

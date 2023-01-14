@@ -35,7 +35,6 @@ def update_crossword():
     crossword_id = int(content['crossword_id'])
     crossword_name = content['crossword_name'] if 'crossword_name' in content.keys() else None
     is_accepted = content['is_accepted'] if 'is_accepted' in content.keys() else True
-
     user = user_service.get_user_by_user_id(user_id)
     if user is None:
         return jsonify({'error': 'User with given id does not exist'}), 401
@@ -117,6 +116,6 @@ def get_solved_crossword_ids_names_and_timestamps():
     if user is None:
         return jsonify({'error': 'User with given id does not exist'}), 401
 
-    crossword_data = crossword_service.get_crossword_processed_images_ids_names_and_timestamps_by_user_id(user_id)
+    all_crosswords = crossword_service.get_crossword_processed_images_ids_names_and_timestamps_by_user_id(user_id)
 
-    return jsonify(crossword_data), 200
+    return jsonify(all_crosswords), 200
