@@ -14,7 +14,7 @@ def update_crossword_after_processing(
         crossword_info: CrosswordInfo,
         status: str,
         minio_path: str,
-        questions_and_answers: str,
+        questions_and_answers: list,
         solving_message: str):
     crossword_info.status = status
     crossword_info.minio_path = minio_path

@@ -1,7 +1,5 @@
-import json
 import os
 import shutil
-from datetime import time
 
 from PIL import Image
 
@@ -115,7 +113,7 @@ def solve_crossword_if_exist():
             crossword_info=crossword_info,
             status=CrosswordStatus.CANNOT_SOLVE.value,
             minio_path=crossword_minio_path,
-            questions_and_answers=json.dumps([]),
+            questions_and_answers=[],
             solving_message=solving_message.value
         )
 
@@ -134,13 +132,14 @@ def solve_crossword_if_exist():
         crossword_task.user_id,
         crossword_info.id)
 
+    questions_and_answers = crossword.extract_questions_with_answers()
+
     # Update status to SOLVED and add push image on minio service
-    questions_and_answers = [{"question": node.definition, "answer": node.solution} for node in crossword.nodes]
     crossword_repository.update_crossword_after_processing(
         crossword_info,
         CrosswordStatus.SOLVED_WAITING.value,
         crossword_minio_path,
-        json.dumps(questions_and_answers),
+        questions_and_answers,
         solving_message.value
     )
     clean_after_solving_crossword(base_image_path, crossword_task)

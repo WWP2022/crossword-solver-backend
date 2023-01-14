@@ -12,7 +12,7 @@ import torchvision.transforms as transforms
 from torch.autograd import Variable
 
 from app.model.crossword import Crossword
-from app.model.crossword_node import CrosswordNode
+from app.model.crossword_node import CrosswordNode, AnswerDirection, GridPosition
 from app.model.database.crossword_info import CrosswordSolvingMessage
 from app.model.ml.pytorchModel import Net
 from app.utils.docker_logs import get_logger
@@ -281,7 +281,7 @@ def ocr_core(filename):
     # text_with_corrections = spell_corrector.correct_question(text_with_corrections)
     # TODO helpful print showing ocr on each field
     # print("Filename: " + filename + " Ocr: " + text_with_corrections)
-    return text_with_corrections
+    return text_with_corrections.upper()
 
 
 def find_solution(data, i, j):
@@ -292,30 +292,30 @@ def find_solution(data, i, j):
     number_of_cols = data.shape[1]
 
     if number_of_cols > j + 1 and data.iloc[i, j + 1] == 'right':
-        return ['right', i, j + 1]
+        return [AnswerDirection.RIGHT, i, j + 1]
     if number_of_rows > i + 1 and data.iloc[i + 1, j] == 'down':
-        return ['down', i + 1, j]
+        return [AnswerDirection.DOWN, i + 1, j]
     if j - 1 >= 0 and data.iloc[i, j - 1] == 'right_down':
-        return ['down', i, j - 1]
+        return [AnswerDirection.DOWN, i, j - 1]
     if number_of_cols > j + 1 and data.iloc[i, j + 1] == 'left_down':
-        return ['down', i, j + 1]
+        return [AnswerDirection.DOWN, i, j + 1]
     if i - 1 >= 0 and data.iloc[i - 1, j] == 'down_right':
-        return ['right', i - 1, j]
+        return [AnswerDirection.RIGHT, i - 1, j]
     if number_of_rows > i + 1 and data.iloc[i + 1, j] == 'up_right':
-        return ['right', i + 1, j]
+        return [AnswerDirection.RIGHT, i + 1, j]
     if number_of_cols > j + 1 and data.iloc[i, j + 1] == 'right_and_down':  # right
-        return ['right', i, j + 1]
+        return [AnswerDirection.RIGHT, i, j + 1]
     if number_of_rows > i + 1 and data.iloc[i + 1, j] == 'right_and_down':  # down
-        return ['down', i + 1, j]
+        return [AnswerDirection.DOWN, i + 1, j]
     # 4 ifs below are workaround for not proper divide field
     if number_of_rows > i + 1 and data.iloc[i + 1, j] == 'right':
-        return ['right', i + 1, j]
+        return [AnswerDirection.RIGHT, i + 1, j]
     if i - 1 >= 0 and data.iloc[i - 1, j] == 'right':
-        return ['right', i - 1, j]
+        return [AnswerDirection.RIGHT, i - 1, j]
     if number_of_cols > j + 1 and data.iloc[i, j + 1] == 'down':
-        return ['down', i, j + 1]
+        return [AnswerDirection.DOWN, i, j + 1]
     if j - 1 >= 0 and data.iloc[i, j - 1] == 'down':
-        return ['down', i, j - 1]
+        return [AnswerDirection.DOWN, i, j - 1]
     print(f'No arrow find for: [{i}, {j}]')
     return None
 
@@ -329,15 +329,15 @@ def find_length(data, solution):
     number_of_rows = data.shape[0]
     number_of_cols = data.shape[1]
 
-    if direction == "down":
-        while (number_of_rows > solution_start_row + counter) and (
-                data.iloc[solution_start_row + counter, solution_start_column] != "text"):
+    if direction == AnswerDirection.RIGHT:
+        while (number_of_cols > solution_start_column + counter) and (
+                data.iloc[solution_start_row, solution_start_column + counter] != "text"):
             counter += 1
         return counter
 
     else:
-        while (number_of_cols > solution_start_column + counter) and (
-                data.iloc[solution_start_row, solution_start_column + counter] != "text"):
+        while (number_of_rows > solution_start_row + counter) and (
+                data.iloc[solution_start_row + counter, solution_start_column] != "text"):
             counter += 1
         return counter
 
@@ -354,10 +354,10 @@ def extract_crossword_to_model(data, base_image_path):
                 length = find_length(data, solution)
                 crossword_nodes.append(
                     CrosswordNode(
-                        definition=str(text),
-                        position_of_definition=[i, j],
+                        ocr_definition=str(text),
+                        position_of_definition=GridPosition(i, j),
                         direction=solution[0],
-                        solution_start_position=[solution[1], solution[2]],
+                        answer_start_position=GridPosition(solution[1], solution[2]),
                         length=length
                     )
                 )

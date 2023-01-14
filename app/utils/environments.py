@@ -1,7 +1,7 @@
 import os
 
 
-class Variables:
+class Environments:
     POSTGRES_USER = os.environ.get("POSTGRES_USER", "postgres")
     POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD", "postgres")
     POSTGRES_HOST = os.environ.get("POSTGRES_HOST", "localhost")
