@@ -43,6 +43,13 @@ def add_crossword_task(file_stream, user_id: str, crossword_name: str, timestamp
         base_image_path=base_image_path,
         user_id=user_id
     )
+
+    minio_client.put_unprocessed_image_with_error(
+        unprocessed_image_path,
+        crossword_task.user_id,
+        crossword_info.id,
+        "new")
+
     return crossword_task_repository.save_crossword_task(crossword_task)
 
 
