@@ -37,7 +37,7 @@ async def scrap_from_szarada(ocr_definition, length):
             if len(possible_solutions) == 0:
                 for possible_solution in soup.findAll(name="span", attrs={"class": "answer"}):
                     answer = possible_solution.getText().upper()
-                    if len(answer) == length and answer not in possible_solutions:
+                    if len(answer) == length and answer not in possible_solutions and len(possible_solutions) < 5:
                         possible_solutions[answer] = ocr_definition
 
             # Third level of possible answers
@@ -45,7 +45,7 @@ async def scrap_from_szarada(ocr_definition, length):
                 for possible_solution in soup.findAll(name="td", attrs={"class": "answer"}):
                     answer = possible_solution.getText().upper()
                     definition = possible_solution.nextSibling.getText().upper()
-                    if len(answer) == length and answer not in possible_solutions:
+                    if len(answer) == length and answer not in possible_solutions and len(possible_solutions) < 5:
                         possible_solutions[answer] = definition
 
             return possible_solutions
@@ -78,6 +78,6 @@ async def scrap_possible_solutions(ocr_definition, length):
     # TODO consider to cat elements if this list is too long
     possible_solutions = possible_solutions_szarada  # list(possible_solutions_szarada)[0:len(possible_solutions_szarada)]
     # TODO helpful print showing definition and found possible answers from remote servers
-    # print(possible_solutions)
+    print(ocr_definition + " " + str(length) + " " + str(possible_solutions))
 
     return possible_solutions
