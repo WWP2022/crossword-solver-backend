@@ -48,6 +48,7 @@ async def scrap_from_szarada(ocr_definition, length):
                     if len(answer) == length and answer not in possible_solutions and len(possible_solutions) < 5:
                         possible_solutions[answer] = definition
 
+            possible_solutions.pop("?", None)
             return possible_solutions
 
 
