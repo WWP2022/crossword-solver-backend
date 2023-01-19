@@ -68,6 +68,7 @@ def get_crossword_processed_images_ids_names_and_timestamps_by_user_id(user_id: 
     crossword_info = crossword_repository.find_crosswords_info_by_user_id(user_id)
     return [{"crossword_id": info.id,
              "crossword_name": info.crossword_name,
+             "crossword_status": info.status,
              "timestamp": info.timestamp} for info in crossword_info]
 
 
