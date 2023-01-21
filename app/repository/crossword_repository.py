@@ -1,7 +1,7 @@
-from sqlalchemy import func, DECIMAL, cast
+from sqlalchemy import func, DECIMAL, cast, or_
 
 from app.clients.postgres_client import db
-from app.model.database.crossword_info import CrosswordInfo
+from app.model.database.crossword_info import CrosswordInfo, CrosswordStatus
 
 
 def save_crossword_info(crossword_info: CrosswordInfo):
@@ -45,6 +45,9 @@ def find_crosswords_info_by_user_id(user_id: str):
     return db.session \
         .query(CrosswordInfo) \
         .filter(CrosswordInfo.user_id == user_id) \
+        .filter(or_(
+        CrosswordInfo.status == CrosswordStatus.SOLVED_WAITING.value,
+        CrosswordInfo.status == CrosswordStatus.SOLVED_ACCEPTED.value)) \
         .all()
 
 
