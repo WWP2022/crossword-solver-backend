@@ -280,7 +280,7 @@ def ocr_core(filename):
     text_with_corrections = " ".join(text.split()).replace("- ", "").replace("|", "")
     # text_with_corrections = spell_corrector.correct_question(text_with_corrections)
     # TODO helpful print showing ocr on each field
-    # print("Filename: " + filename + " Ocr: " + text_with_corrections)
+    print("Filename: " + filename + " Ocr: " + text_with_corrections)
     return text_with_corrections.upper()
 
 
@@ -406,7 +406,7 @@ def image_to_json(base_image_path, IMG_SHAPE=(64, 64), category_mapper={}):
         property_matrix[idxs[0], idxs[1]] = np.argmax(pred)
         textual_property_matrix.iloc[idxs[0], idxs[1]] = category_mapper[np.argmax(pred)]
         # TODO helpful print showing prediction of field
-        # print(img_path + " " + str(category_mapper[np.argmax(pred)]))
+        print(img_path + " " + str(category_mapper[np.argmax(pred)]))
 
     return extract_crossword_to_model(textual_property_matrix, base_image_path)
 
